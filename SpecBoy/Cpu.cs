@@ -40,13 +40,7 @@ namespace SpecBoy
 		{
 			get
 			{
-				int flags = Convert.ToInt32(Zero) << 7;
-				flags += Convert.ToInt32(Negative) << 6;
-				flags += Convert.ToInt32(HalfCarry) << 5;
-				flags += Convert.ToInt32(Carry) << 4;
-
-				af.R8Low = (byte)flags;
-
+				UpdateFlags();
 				return af.R16;
 			}
 
@@ -62,19 +56,25 @@ namespace SpecBoy
 		}
 
 		public byte A { get => af.R8High; set => af.R8High = value; }
+
 		public byte F
 		{
+			// Don't want F being altered directly, so only use getter
 			get
 			{
-				int flags = Convert.ToInt32(Zero) << 7;
-				flags += Convert.ToInt32(Negative) << 6;
-				flags += Convert.ToInt32(HalfCarry) << 5;
-				flags += Convert.ToInt32(Carry) << 4;
-
-				af.R8Low = (byte)flags;
-
+				UpdateFlags();
 				return af.R8Low;
 			}
+		}
+
+		private void UpdateFlags()
+		{
+			int flags = Zero ? 1 << 7 : 0;
+			flags |= Negative ? 1 << 6 : 0;
+			flags |= HalfCarry ? 1 << 5 : 0;
+			flags |= Carry ? 1 << 4 : 0;
+
+			af.R8Low = (byte)flags;
 		}
 
 		public ushort BC { get => bc; set => bc.R16 = value; }
@@ -132,16 +132,15 @@ namespace SpecBoy
 
 		private ushort IncR16(int reg)
 		{
-			ushort result = GetR16(reg);
-			return (ushort)(result + 1);
+			return (ushort)(GetR16(reg) + 1);
 		}
 
 		private ushort DecR16(int reg)
 		{
-			ushort result = GetR16(reg);
-			return (ushort)(result - 1);
+			return (ushort)(GetR16(reg) - 1);
 		}
 
+		// Can get either SP or AF depening on bool
 		private ushort GetR16(int reg, bool usesSP = true)
 		{
 			if (usesSP)
@@ -166,7 +165,7 @@ namespace SpecBoy
 				};
 			}
 		}
-
+		// Can set either SP or AF depening on bool
 		private void SetR16(int reg, ushort value, bool usesSP = true)
 		{
 			switch (reg)
@@ -296,10 +295,10 @@ namespace SpecBoy
 			WriteWord(SP, GetR16(r16, false));
 		}
 
-		private void PushPC()
+		private void Push(ushort address)
 		{
 			SP -= 2;
-			WriteWord(SP, PC);
+			WriteWord(SP, address);
 		}
 
 		private ushort Pop()
@@ -322,7 +321,7 @@ namespace SpecBoy
 			// Handle unconditional CALL or test condition
 			if (opcode == 0xcd || TestCondition(opcode))
 			{
-				PushPC();
+				Push(PC);
 				PC = address;
 			}
 		}
@@ -351,25 +350,42 @@ namespace SpecBoy
 
 		private void Ret(int opcode)
 		{
+			// For RETI
+			if (opcode == 0xd9)
+			{
+				Ei();
+				PC = Pop();
+			}
+
 			// Handle unconditional RET or test condition
-			if (opcode == 0xc9 || TestCondition(opcode))
+			else if (opcode == 0xc9 || TestCondition(opcode))
 			{
 				PC = Pop();
 			}
 		}
 
-		private bool TestCondition(int opcode)
+		private void Reti()
+		{
+			Ei();
+			PC = Pop();
+		}
+
+			private bool TestCondition(int opcode)
 		{
 			 // 0 = NZ 1 = Z 2 = NC 3 = C
-
 			return ((opcode >> 3) & 0x03) switch
 			{
 				0 => !Zero,
 				1 => Zero,
 				2 => !Carry,
 				3 => Carry,
-				_ => false
+				_ => false	// Never reached
 			};
+		}
+
+		private void Ei()
+		{
+
 		}
 
 		private void Add(byte value)
@@ -386,25 +402,46 @@ namespace SpecBoy
 
 		private void Adc(byte value)
 		{
-			byte result = (byte)((A + value) + (Carry == true ? 1 : 0));
+			int result = (A + value + (Carry ? 1 : 0));
 
-			Zero = result == 0;
+			Zero = (byte)result == 0;
 			Negative = false;
-			HalfCarry = ((result - value) & 0x0f) + (value & 0x0f) > 0x0f;
-			Carry = result < A;
+			HalfCarry = (A & 0x0f) + (value & 0x0f) + (Carry ? 1 : 0) > 0x0f;
+			Carry = result > 255;
 
-			A = result;
+			A = (byte)result;
 		}
 
 		private void AddHl(int reg)
 		{
-			ushort result = (ushort)(HL + GetR16(reg));
-			
+			ushort value = GetR16(reg);
+			ushort result = (ushort)(HL + value);
+
 			Negative = false;
-			HalfCarry = (HL & 0xfff) + (reg & 0xfff) > 0xfff;
+			HalfCarry = (HL & 0xfff) + (value & 0xfff) > 0xfff;
 			Carry = result < HL;
 
 			HL = result;
+		}
+
+		private void LdHlSp(byte i8)
+		{
+			Zero = false;
+			Negative = false;
+			HalfCarry = ((SP + i8) & 0x0f) < (SP & 0x0f);
+			Carry = ((SP + i8) & 0xff) < (SP & 0xff);
+
+			HL = (ushort)(SP + (sbyte)i8);
+		}
+
+		private void AddSp(byte i8)
+		{
+			Zero = false;
+			Negative = false;
+			HalfCarry = ((SP + i8) & 0x0f) < (SP & 0x0f);
+			Carry = ((SP + i8) & 0xff) < (SP & 0xff);
+
+			SP += (ushort)(sbyte)i8;
 		}
 
 		private byte Cp(byte value)
@@ -422,6 +459,18 @@ namespace SpecBoy
 		private void Sub(byte value)
 		{
 			A = Cp(value);
+		}
+
+		private void Sbc(byte value)
+		{
+			int result = (A - value - (Carry ? 1 : 0));
+
+			Zero = (byte)result == 0;
+			Negative = true;
+			HalfCarry = ((A & 0x0f) - (Carry ? 1 : 0) < (value & 0x0f));
+			Carry = result < 0;
+
+			A = (byte)result;
 		}
 
 		private void And(byte value)
@@ -463,11 +512,25 @@ namespace SpecBoy
 
 		private byte Srl(int reg)
 		{
+			Carry = (reg & 1) == 1;
 			reg >>= 1;
 			Zero = reg == 0;
 			Negative = false;
 			HalfCarry = false;
+
+			return (byte)reg;
+		}
+
+		private byte Rl(int reg)
+		{
+			var cc = Carry;
+
 			Carry = (reg & 1) == 1;
+			reg = (byte)((reg << 1) | (cc ? 1 : 0));
+
+			Zero = reg == 0;
+			Negative = false;
+			HalfCarry = false;
 
 			return (byte)reg;
 		}
@@ -478,6 +541,30 @@ namespace SpecBoy
 
 			Carry = (reg & 1) == 1;
 			reg = (byte)((reg >> 1) | (cc ? (1 << 7) : 0));
+
+			Zero = reg == 0;
+			Negative = false;
+			HalfCarry = false;
+
+			return (byte)reg;
+		}
+
+		private byte Rlc(int reg)
+		{
+			Carry = (reg & 0x80) != 0;
+			reg = (reg << 1) | (reg >> 7);
+
+			Zero = reg == 0;
+			Negative = false;
+			HalfCarry = false;
+
+			return (byte)reg;
+		}
+
+		private byte Rrc(int reg)
+		{
+			Carry = (reg & 0x01) != 0;
+			reg = (reg >> 1) | (reg << 7);
 
 			Zero = reg == 0;
 			Negative = false;
@@ -591,6 +678,17 @@ namespace SpecBoy
 					SetR8(registerId, ReadNextByte());
 					break;
 
+				// RLCA - Same as RLC A but Zero always false
+				case 0x07:
+					A = Rlc(A);
+					Zero = false;
+					break;
+
+				// LD (u16), SP
+				case 0x08:
+					WriteWord(ReadNextWord(), SP);
+					break;
+
 				// ADD HL, R16
 				case 0x09:
 				case 0x19:
@@ -633,6 +731,18 @@ namespace SpecBoy
 				// LD A, (BC)
 				case 0x0a:
 					A = ReadByte(BC);
+					break;
+
+				// RRCA - same as RRC A except Zero always false
+				case 0xf:
+					A = Rrc(A);
+					Zero = false;
+					break;
+
+				// RLA  - same as RL A except Zero always false
+				case 0x17:
+					A = Rl(A);
+					Zero = false;
 					break;
 
 				// LD A, (DE)
@@ -699,9 +809,24 @@ namespace SpecBoy
 					Add(GetR8(opcode & 0x07));
 					break;
 
+				// ADC A, r8
+				case var n when n >= 0x88 && n <= 0x8f:
+					Adc(GetR8(opcode & 0x07));
+					break;
+
 				// SUB A, r8
 				case var n when n >= 0x90 && n <= 0x97:
 					Sub(GetR8(opcode & 0x07));
+					break;
+
+				// SBC A, r8
+				case var n when n >= 0x98 && n <= 0x9f:
+					Sbc(GetR8(opcode & 0x07));
+					break;
+
+				// AND A, r8
+				case var n when n >= 0xa0 && n <= 0xa7:
+					And(GetR8(opcode & 0x07));
 					break;
 
 				// XOR A, R8
@@ -775,12 +900,43 @@ namespace SpecBoy
 					Ret(opcode);
 					break;
 
+				// RST XX
+				case 0xc7:
+				case 0xd7:
+				case 0xe7:
+				case 0xf7:
+				case 0xcf:
+				case 0xdf:
+				case 0xef:
+				case 0xff:
+					Push(PC);
+					PC = ((ushort)(opcode & 0x38));
+					break;
+
 				// CB Prefix
 				case 0xcb:
 					opcode = ReadNextByte();
 
 					switch (opcode)
 					{
+						// RLC r8
+						case var n when n >= 0x00 && n <= 0x07:
+							registerId = opcode & 0x07;
+							SetR8(registerId, Rlc(GetR8(registerId)));
+							break;
+
+						// RRC r8
+						case var n when n >= 0x08 && n <= 0x0f:
+							registerId = opcode & 0x07;
+							SetR8(registerId, Rrc(GetR8(registerId)));
+							break;
+
+						// RL r8
+						case var n when n >= 0x10 && n <= 0x17:
+							registerId = opcode & 0x07;
+							SetR8(registerId, Rl(GetR8(registerId)));
+							break;
+
 						// RR r8
 						case var n when n >= 0x18 && n <= 0x1f:
 							registerId = opcode & 0x07;
@@ -819,14 +975,34 @@ namespace SpecBoy
 					Sub(ReadNextByte());
 					break;
 
+				// RETI
+				case 0xd9:
+					Reti();
+					break;
+
+				// SBC A, u8
+				case 0xde:
+					Sbc(ReadNextByte());
+					break;
+
 				// LD (FF00 + u8), A
 				case 0xe0:
 					WriteByte(0xff00 + ReadNextByte(), A);
 					break;
 
+				// LD (FF00 + C), A
+				case 0xe2:
+					WriteByte(0xff00 + C, A);
+					break;
+
 				// AND A, u8
 				case 0xe6:
 					And(ReadNextByte());
+					break;
+
+				// ADD SP, i8
+				case 0xe8:
+					AddSp(ReadNextByte());
 					break;
 
 				// JP HL
@@ -849,6 +1025,11 @@ namespace SpecBoy
 					A = ReadByte(0xff00 + ReadNextByte());
 					break;
 
+				// LD A,(FF00 + C)
+				case 0xf2:
+					A = ReadByte(0xff00 + C);
+					break;
+
 				// Todo: EI DI - just break for now
 				case 0xf3:
 				case 0xfb:
@@ -857,6 +1038,17 @@ namespace SpecBoy
 				// OR A, u16
 				case 0xf6:
 					Or(ReadNextByte());
+					break;
+
+				// LD HL, SP+i8
+				case 0xf8:
+					LdHlSp(ReadNextByte());
+					break;
+
+				// LD SP, HL
+				case 0xf9:
+					SP = HL;
+					Cycles++;
 					break;
 
 				// LD A, (u16)

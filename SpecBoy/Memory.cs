@@ -32,6 +32,11 @@ namespace SpecBoy
 		public void WriteByte(int address, byte value)
 		{
 			Mem[address] = value;
+
+			if (address == 0xff01)
+			{
+				Console.Write((char)value);
+			}
 		}
 
 		public void WriteWord(int address, ushort value)
