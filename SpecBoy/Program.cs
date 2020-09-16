@@ -6,7 +6,8 @@ namespace SpecBoy
 	{
 		static void Main(string[] args)
 		{
-			Console.WriteLine("All tests passed!");
+			Gameboy gb = new Gameboy();
+			gb.Run();
 		}
 	}
 }
