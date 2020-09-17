@@ -56,7 +56,6 @@ namespace SpecBoy
 		}
 
 		public byte A { get => af.R8High; set => af.R8High = value; }
-
 		public byte F
 		{
 			// Don't want F being altered directly, so only use getter
@@ -132,11 +131,13 @@ namespace SpecBoy
 
 		private ushort IncR16(int reg)
 		{
+			Cycles++;
 			return (ushort)(GetR16(reg) + 1);
 		}
 
 		private ushort DecR16(int reg)
 		{
+			Cycles++;
 			return (ushort)(GetR16(reg) - 1);
 		}
 
@@ -289,14 +290,9 @@ namespace SpecBoy
 			mem.WriteWord(address, value);
 		}
 
-		private void Push(int r16)
-		{
-			SP -= 2;
-			WriteWord(SP, GetR16(r16, false));
-		}
-
 		private void Push(ushort address)
 		{
+			Cycles++;
 			SP -= 2;
 			WriteWord(SP, address);
 		}
@@ -321,6 +317,7 @@ namespace SpecBoy
 			// Handle unconditional CALL or test condition
 			if (opcode == 0xcd || TestCondition(opcode))
 			{
+				Cycles++;
 				Push(PC);
 				PC = address;
 			}
@@ -333,6 +330,7 @@ namespace SpecBoy
 			// Handle unconditional JP or test condition
 			if (opcode == 0xc3 || TestCondition(opcode))
 			{
+				Cycles++;
 				PC = address;
 			}
 		}
@@ -344,22 +342,22 @@ namespace SpecBoy
 			// Handle unconditional JR or test condition
 			if (opcode == 0x18 || TestCondition(opcode))
 			{
+				Cycles++;
 				PC += (ushort)offset;
 			}
 		}
 
 		private void Ret(int opcode)
 		{
-			// For RETI
-			if (opcode == 0xd9)
-			{
-				Ei();
-				PC = Pop();
-			}
+			Cycles++;
+
+			var condition = TestCondition(opcode);
 
 			// Handle unconditional RET or test condition
-			else if (opcode == 0xc9 || TestCondition(opcode))
+			if (opcode == 0xc9 || condition)
 			{
+				// Add extra cycle if conditional
+				Cycles += condition ? 1 : 0;
 				PC = Pop();
 			}
 		}
@@ -370,7 +368,7 @@ namespace SpecBoy
 			PC = Pop();
 		}
 
-			private bool TestCondition(int opcode)
+		private bool TestCondition(int opcode)
 		{
 			 // 0 = NZ 1 = Z 2 = NC 3 = C
 			return ((opcode >> 3) & 0x03) switch
@@ -386,6 +384,27 @@ namespace SpecBoy
 		private void Ei()
 		{
 
+		}
+
+		private void Daa()
+		{
+			byte adjustment = 0;
+
+			if (Carry || (A > 0x99 && !Negative))
+			{
+				adjustment = 0x60;
+				Carry = true;
+			}
+
+			if (HalfCarry || ((A & 0x0f) > 0x09 && !Negative))
+			{
+				adjustment += 0x06;
+			}
+
+			A += Negative ? (byte)-adjustment : adjustment;
+
+			Zero = A == 0;
+			HalfCarry = false;
 		}
 
 		private void Add(byte value)
@@ -414,6 +433,8 @@ namespace SpecBoy
 
 		private void AddHl(int reg)
 		{
+			Cycles++;
+
 			ushort value = GetR16(reg);
 			ushort result = (ushort)(HL + value);
 
@@ -426,6 +447,8 @@ namespace SpecBoy
 
 		private void LdHlSp(byte i8)
 		{
+			Cycles++;
+
 			Zero = false;
 			Negative = false;
 			HalfCarry = ((SP + i8) & 0x0f) < (SP & 0x0f);
@@ -436,6 +459,8 @@ namespace SpecBoy
 
 		private void AddSp(byte i8)
 		{
+			Cycles += 2;
+
 			Zero = false;
 			Negative = false;
 			HalfCarry = ((SP + i8) & 0x0f) < (SP & 0x0f);
@@ -503,95 +528,126 @@ namespace SpecBoy
 			Carry = false;
 		}
 
-		private void Bit(int reg, int bit)
+		private void Bit(byte value, int bit)
 		{			
-			Zero = (reg & (1 << bit)) == 0;
+			Zero = (value & (1 << bit)) == 0;
 			Negative = false;
 			HalfCarry = true;
 		}
 
-		private byte Srl(int reg)
+		private byte Srl(byte value)
 		{
-			Carry = (reg & 1) == 1;
-			reg >>= 1;
-			Zero = reg == 0;
+			Carry = (value & 0x01) != 0;
+			value >>= 1;
+			Zero = value == 0;
 			Negative = false;
 			HalfCarry = false;
 
-			return (byte)reg;
+			return value;
 		}
 
-		private byte Rl(int reg)
+		private byte Rl(byte value)
 		{
 			var cc = Carry;
 
-			Carry = (reg & 1) == 1;
-			reg = (byte)((reg << 1) | (cc ? 1 : 0));
+			Carry = (value & 0x80) != 0;
+			value = (byte)((value << 1) | (cc ? 1 : 0));
 
-			Zero = reg == 0;
+			Zero = value == 0;
 			Negative = false;
 			HalfCarry = false;
 
-			return (byte)reg;
+			return value;
 		}
 
-		private byte Rr(int reg)
+		private byte Rr(byte value)
 		{
 			var cc = Carry;
 
-			Carry = (reg & 1) == 1;
-			reg = (byte)((reg >> 1) | (cc ? (1 << 7) : 0));
+			Carry = (value & 1) == 1;
+			value = (byte)((value >> 1) | (cc ? (1 << 7) : 0));
 
-			Zero = reg == 0;
+			Zero = value == 0;
 			Negative = false;
 			HalfCarry = false;
 
-			return (byte)reg;
+			return value;
 		}
 
-		private byte Rlc(int reg)
+		private byte Rlc(byte value)
 		{
-			Carry = (reg & 0x80) != 0;
-			reg = (reg << 1) | (reg >> 7);
+			Carry = (value & 0x80) != 0;
+			value = (byte)((value << 1) | (value >> 7));
 
-			Zero = reg == 0;
+			Zero = value == 0;
 			Negative = false;
 			HalfCarry = false;
 
-			return (byte)reg;
+			return value;
 		}
 
-		private byte Rrc(int reg)
+		private byte Rrc(byte value)
 		{
-			Carry = (reg & 0x01) != 0;
-			reg = (reg >> 1) | (reg << 7);
+			Carry = (value & 0x01) != 0;
+			value = (byte)((value >> 1) | (value << 7));
 
-			Zero = reg == 0;
+			Zero = value == 0;
 			Negative = false;
 			HalfCarry = false;
 
-			return (byte)reg;
+			return value;
 		}
 
-		private byte Swap(int reg)
+		private byte Sla(byte value)
 		{
-			reg = (reg >> 4) | (reg << 4);
+			Carry = (value & 0x80) != 0;
+			value <<= 1;
 
-			Zero = reg == 0;
+			Zero = value == 0;
+			Negative = false;
+			HalfCarry = false;
+
+			return value;
+		}
+
+		private byte Sra(byte value)
+		{
+			Carry = (value & 0x01) != 0;
+			value = (byte)((value >> 1) | (value & 0x80));
+
+			Zero = value == 0;
+			Negative = false;
+			HalfCarry = false;
+
+			return value;
+		}
+
+		private byte Swap(byte value)
+		{
+			value = (byte)((value >> 4) | (value << 4));
+
+			Zero = value == 0;
 			Negative = false;
 			HalfCarry = false;
 			Carry = false;
 
-			return (byte)reg;
+			return value;
+		}
+
+		private byte Res(byte value, int bit)
+		{
+			return (byte)(value & (~(1 << bit)));
+		}
+
+		private byte Set(byte value, int bit)
+		{
+			return (byte)(value | (1 << bit));
 		}
 
 		public void Execute()
 		{
 			int registerId;
 			byte opcode = ReadNextByte();
-
-			// Helper function
-			//int ShiftAndIsolateBits(int bits, int mask) => (opcode >> bits) & mask;
 
 			switch (opcode)
 			{	
@@ -707,25 +763,13 @@ namespace SpecBoy
 					SetR16(registerId, DecR16(registerId));
 					break;
 
+				// STOP
+				case 0x10:
+					break;
+
 				// DAA
 				case 0x27:
-					byte adjustment = 0;
-
-					if (Carry || (A > 0x99 && !Negative))
-					{
-						adjustment = 0x60;
-						Carry = true;
-					}
-
-					if (HalfCarry || ((A & 0x0f) > 0x09 && !Negative))
-					{
-						adjustment += 0x06;
-					}
-
-					A += Negative ? (byte)-adjustment : adjustment;
-
-					Zero = A == 0;
-					HalfCarry = false;
+					Daa();
 					break;
 
 				// LD A, (BC)
@@ -877,7 +921,7 @@ namespace SpecBoy
 				case 0xe5:
 				case 0xf5:
 					registerId = (opcode >> 4) & 0x03;
-					Push(registerId);
+					Push(GetR16(registerId, false));
 					break;
 
 				// ADD A, R8
@@ -889,7 +933,6 @@ namespace SpecBoy
 				case 0xc6:
 					Add(ReadNextByte());
 					break;
-
 
 				// RET
 				case 0xc0:
@@ -943,6 +986,18 @@ namespace SpecBoy
 							SetR8(registerId, Rr(GetR8(registerId)));
 							break;
 
+						// SLA r8
+						case var n when n >= 0x20 && n <= 0x27:
+							registerId = opcode & 0x07;
+							SetR8(registerId, Sla(GetR8(registerId)));
+							break;
+
+						// SRA r8
+						case var n when n >= 0x28 && n <= 0x2f:
+							registerId = opcode & 0x07;
+							SetR8(registerId, Sra(GetR8(registerId)));
+							break;
+
 						// Swap r8
 						case var n when n >= 0x30 && n <= 0x37:
 							registerId = opcode & 0x07;
@@ -958,6 +1013,18 @@ namespace SpecBoy
 						// BIT
 						case var n when n >= 0x40 && n <= 0x7f:
 							Bit(GetR8(opcode & 0x7), (opcode >> 3) & 0x07);
+							break;
+				
+						// RES
+						case var n when n >= 0x80 && n <= 0xbf:
+							registerId = opcode & 0x07;
+							SetR8(registerId, Res(GetR8(registerId), (opcode >> 3) & 0x07));
+							break;
+
+						// SET
+						case var n when n >= 0xc0 && n <= 0xff:
+							registerId = opcode & 0x07;
+							SetR8(registerId, Set(GetR8(registerId), (opcode >> 3) & 0x07));
 							break;
 
 						default:
