@@ -1,97 +1,23 @@
 ﻿using System;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Xml;
 
 namespace SpecBoy
 {
 	class Cpu
 	{
-		[StructLayout(LayoutKind.Explicit)]
-		private struct Reg16
-		{
-			[FieldOffset(0)] public ushort R16;
-			[FieldOffset(0)] public byte R8Low;
-			[FieldOffset(1)] public byte R8High;
-
-			public static implicit operator ushort(Reg16 reg)
-			{
-				return reg.R16;
-			}
-		}
-
 		private readonly Memory mem;
 
 		// Flags - discrete, so we're not wasting cycles on bitwise ops
-		private bool Zero;
-		private bool Negative;
-		private bool HalfCarry;
-		private bool Carry;
+		private bool zero;
+		private bool negative;
+		private bool halfCarry;
+		private bool carry;
 
 		// Registers
 		private Reg16 af;
 		private Reg16 bc;
 		private Reg16 de;
 		private Reg16 hl;
-
-		// Only really needed for PUSH AF and POP AF
-		public ushort AF
-		{
-			get
-			{
-				UpdateFlags();
-				return af.R16;
-			}
-
-			set
-			{
-				af.R16 = value;
-
-				Zero = (value & 0x80) != 0;
-				Negative = (value & 0x40) != 0;
-				HalfCarry = (value & 0x20) != 0;
-				Carry = (value & 0x10) != 0;
-			}
-		}
-
-		public byte A { get => af.R8High; set => af.R8High = value; }
-		public byte F
-		{
-			// Don't want F being altered directly, so only use getter
-			get
-			{
-				UpdateFlags();
-				return af.R8Low;
-			}
-		}
-
-		private void UpdateFlags()
-		{
-			int flags = Zero ? 1 << 7 : 0;
-			flags |= Negative ? 1 << 6 : 0;
-			flags |= HalfCarry ? 1 << 5 : 0;
-			flags |= Carry ? 1 << 4 : 0;
-
-			af.R8Low = (byte)flags;
-		}
-
-		public ushort BC { get => bc; set => bc.R16 = value; }
-		public byte B { get => bc.R8High; set => bc.R8High = value; }
-		public byte C { get => bc.R8Low; set => bc.R8Low = value; }
-
-		public ushort DE { get => de; set => de.R16 = value; }
-		public byte D { get => de.R8High; set => de.R8High = value; }
-		public byte E { get => de.R8Low; set => de.R8Low = value; }
-
-		public ushort HL { get => hl; set => hl.R16 = value; }
-		public byte H { get => hl.R8High; set => hl.R8High = value; }
-		public byte L { get => hl.R8Low; set => hl.R8Low = value; }
-
-		public ushort PC { get; set; }
-		public ushort SP { get; set; }
-
-		public int Cycles { get; set; }
 
 		public Cpu(Memory mem)
 		{
@@ -105,42 +31,63 @@ namespace SpecBoy
 			SP = 0xfffe;
 		}
 
-		private byte IncR8(int r8)
+		// Only really needed for PUSH AF and POP AF
+		private ushort AF
 		{
-			byte result = GetR8(r8);
-			result++;
+			get
+			{
+				UpdateFlags();
+				return af.R16;
+			}
 
-			Zero = result == 0;
-			HalfCarry = (result & 0x0f) == 0;
-			Negative = false;
+			set
+			{
+				af.R16 = value;
 
-			return result;
+				zero = (value & 0x80) != 0;
+				negative = (value & 0x40) != 0;
+				halfCarry = (value & 0x20) != 0;
+				carry = (value & 0x10) != 0;
+			}
 		}
 
-		private byte DecR8(int r8)
+		private byte A { get => af.R8High; set => af.R8High = value; }
+		private byte F
 		{
-			byte result = GetR8(r8);
-			result--;
-
-			Zero = result == 0;
-			HalfCarry = (result & 0x0f) == 0x0f;
-			Negative = true;
-
-			return result;
+			// Don't want F being altered directly, so only use getter
+			get
+			{
+				UpdateFlags();
+				return af.R8Low;
+			}
 		}
 
-		private ushort IncR16(int r16)
-		{
-			Cycles++;
-			return (ushort)(GetR16(r16) + 1);
-		}
+		private ushort BC { get => bc; set => bc.R16 = value; }
+		private byte B { get => bc.R8High; set => bc.R8High = value; }
+		private byte C { get => bc.R8Low; set => bc.R8Low = value; }
 
-		private ushort DecR16(int r16)
-		{
-			Cycles++;
-			return (ushort)(GetR16(r16) - 1);
-		}
+		private ushort DE { get => de; set => de.R16 = value; }
+		private byte D { get => de.R8High; set => de.R8High = value; }
+		private byte E { get => de.R8Low; set => de.R8Low = value; }
 
+		private ushort HL { get => hl; set => hl.R16 = value; }
+		private byte H { get => hl.R8High; set => hl.R8High = value; }
+		private byte L { get => hl.R8Low; set => hl.R8Low = value; }
+
+		private ushort PC { get; set; }
+		private ushort SP { get; set; }
+
+		private int Cycles { get; set; }
+
+		private void UpdateFlags()
+		{
+			int flags = zero ? 1 << 7 : 0;
+			flags |= negative ? 1 << 6 : 0;
+			flags |= halfCarry ? 1 << 5 : 0;
+			flags |= carry ? 1 << 4 : 0;
+
+			af.R8Low = (byte)flags;
+		}
 		// Can get either SP or AF depening on bool
 		private ushort GetR16(int r16, bool usesSP = true)
 		{
@@ -152,7 +99,6 @@ namespace SpecBoy
 				3 => usesSP ? SP : AF,
 				_ => throw new ArgumentException($"Attempt to get invalid R16 identifier. R16 was {r16}", "r16")
 			};
-
 		}
 
 		// Can set either SP or AF depening on bool
@@ -181,6 +127,7 @@ namespace SpecBoy
 					{
 						AF = value;
 					}
+
 					break;
 
 				default:
@@ -245,7 +192,6 @@ namespace SpecBoy
 			}
 		}
 
-
 		private byte ReadByte(int address)
 		{
 			Cycles++;
@@ -273,7 +219,6 @@ namespace SpecBoy
 			PC += 2;
 			return num;
 		}
-
 		private void WriteByte(int address, byte value)
 		{
 			Cycles++;
@@ -284,6 +229,42 @@ namespace SpecBoy
 		{
 			Cycles += 2;
 			mem.WriteWord(address, value);
+		}
+
+		private byte IncR8(int r8)
+		{
+			byte result = GetR8(r8);
+			result++;
+
+			zero = result == 0;
+			halfCarry = (result & 0x0f) == 0;
+			negative = false;
+
+			return result;
+		}
+
+		private byte DecR8(int r8)
+		{
+			byte result = GetR8(r8);
+			result--;
+
+			zero = result == 0;
+			halfCarry = (result & 0x0f) == 0x0f;
+			negative = true;
+
+			return result;
+		}
+
+		private ushort IncR16(int r16)
+		{
+			Cycles++;
+			return (ushort)(GetR16(r16) + 1);
+		}
+
+		private ushort DecR16(int r16)
+		{
+			Cycles++;
+			return (ushort)(GetR16(r16) - 1);
 		}
 
 		private void Push(ushort address)
@@ -366,13 +347,13 @@ namespace SpecBoy
 
 		private bool TestCondition(int opcode)
 		{
-			 // 0 = NZ 1 = Z 2 = NC 3 = C
+			// 0 = NZ 1 = Z 2 = NC 3 = C
 			return ((opcode >> 3) & 0x03) switch
 			{
-				0 => !Zero,
-				1 => Zero,
-				2 => !Carry,
-				3 => Carry,
+				0 => !zero,
+				1 => zero,
+				2 => !carry,
+				3 => carry,
 				_ => false	// Never reached
 			};
 		}
@@ -386,43 +367,43 @@ namespace SpecBoy
 		{
 			byte adjustment = 0;
 
-			if (Carry || (A > 0x99 && !Negative))
+			if (carry || (A > 0x99 && !negative))
 			{
 				adjustment = 0x60;
-				Carry = true;
+				carry = true;
 			}
 
-			if (HalfCarry || ((A & 0x0f) > 0x09 && !Negative))
+			if (halfCarry || ((A & 0x0f) > 0x09 && !negative))
 			{
 				adjustment += 0x06;
 			}
 
-			A += Negative ? (byte)-adjustment : adjustment;
+			A += negative ? (byte)-adjustment : adjustment;
 
-			Zero = A == 0;
-			HalfCarry = false;
+			zero = A == 0;
+			halfCarry = false;
 		}
 
 		private void Add(byte value)
 		{
 			byte result = (byte)(A + value);
 
-			Zero = result == 0;
-			Negative = false;
-			HalfCarry = (A & 0x0f) + (value & 0x0f) > 0x0f;
-			Carry = result < A;
+			zero = result == 0;
+			negative = false;
+			halfCarry = (A & 0x0f) + (value & 0x0f) > 0x0f;
+			carry = result < A;
 
 			A = result;
 		}
 
 		private void Adc(byte value)
 		{
-			int result = (A + value + (Carry ? 1 : 0));
+			int result = (A + value + (carry ? 1 : 0));
 
-			Zero = (byte)result == 0;
-			Negative = false;
-			HalfCarry = (A & 0x0f) + (value & 0x0f) + (Carry ? 1 : 0) > 0x0f;
-			Carry = result > 255;
+			zero = (byte)result == 0;
+			negative = false;
+			halfCarry = (A & 0x0f) + (value & 0x0f) + (carry ? 1 : 0) > 0x0f;
+			carry = result > 255;
 
 			A = (byte)result;
 		}
@@ -434,9 +415,9 @@ namespace SpecBoy
 			ushort value = GetR16(r16);
 			ushort result = (ushort)(HL + value);
 
-			Negative = false;
-			HalfCarry = (HL & 0xfff) + (value & 0xfff) > 0xfff;
-			Carry = result < HL;
+			negative = false;
+			halfCarry = (HL & 0xfff) + (value & 0xfff) > 0xfff;
+			carry = result < HL;
 
 			HL = result;
 		}
@@ -445,10 +426,10 @@ namespace SpecBoy
 		{
 			Cycles++;
 
-			Zero = false;
-			Negative = false;
-			HalfCarry = ((SP + i8) & 0x0f) < (SP & 0x0f);
-			Carry = ((SP + i8) & 0xff) < (SP & 0xff);
+			zero = false;
+			negative = false;
+			halfCarry = ((SP + i8) & 0x0f) < (SP & 0x0f);
+			carry = ((SP + i8) & 0xff) < (SP & 0xff);
 
 			HL = (ushort)(SP + (sbyte)i8);
 		}
@@ -457,10 +438,10 @@ namespace SpecBoy
 		{
 			Cycles += 2;
 
-			Zero = false;
-			Negative = false;
-			HalfCarry = ((SP + i8) & 0x0f) < (SP & 0x0f);
-			Carry = ((SP + i8) & 0xff) < (SP & 0xff);
+			zero = false;
+			negative = false;
+			halfCarry = ((SP + i8) & 0x0f) < (SP & 0x0f);
+			carry = ((SP + i8) & 0xff) < (SP & 0xff);
 
 			SP += (ushort)(sbyte)i8;
 		}
@@ -469,10 +450,10 @@ namespace SpecBoy
 		{
 			byte result = (byte)(A - value);
 
-			Zero = result == 0;
-			Negative = true;
-			HalfCarry = (A & 0x0f) < (value & 0x0f);
-			Carry = result > A;
+			zero = result == 0;
+			negative = true;
+			halfCarry = (A & 0x0f) < (value & 0x0f);
+			carry = result > A;
 
 			return result;
 		}
@@ -484,12 +465,12 @@ namespace SpecBoy
 
 		private void Sbc(byte value)
 		{
-			int result = (A - value - (Carry ? 1 : 0));
+			int result = (A - value - (carry ? 1 : 0));
 
-			Zero = (byte)result == 0;
-			Negative = true;
-			HalfCarry = ((A & 0x0f) - (Carry ? 1 : 0) < (value & 0x0f));
-			Carry = result < 0;
+			zero = (byte)result == 0;
+			negative = true;
+			halfCarry = ((A & 0x0f) - (carry ? 1 : 0) < (value & 0x0f));
+			carry = result < 0;
 
 			A = (byte)result;
 		}
@@ -498,122 +479,122 @@ namespace SpecBoy
 		{
 			A &= value;
 
-			Zero = A == 0;
-			Negative = false;
-			HalfCarry = true;
-			Carry = false;
+			zero = A == 0;
+			negative = false;
+			halfCarry = true;
+			carry = false;
 		}
 
 		private void Or(byte value)
 		{
 			A |= value;
 
-			Zero = A == 0;
-			Negative = false;
-			HalfCarry = false;
-			Carry = false;
+			zero = A == 0;
+			negative = false;
+			halfCarry = false;
+			carry = false;
 		}
 
 		private void Xor(byte value)
 		{
 			A ^= value;
 
-			Zero = A == 0;
-			Negative = false;
-			HalfCarry = false;
-			Carry = false;
+			zero = A == 0;
+			negative = false;
+			halfCarry = false;
+			carry = false;
 		}
 
 		private void Bit(byte value, int bit)
 		{			
-			Zero = (value & (1 << bit)) == 0;
-			Negative = false;
-			HalfCarry = true;
+			zero = (value & (1 << bit)) == 0;
+			negative = false;
+			halfCarry = true;
 		}
 
 		private byte Srl(byte value)
 		{
-			Carry = (value & 0x01) != 0;
+			carry = (value & 0x01) != 0;
 			value >>= 1;
-			Zero = value == 0;
-			Negative = false;
-			HalfCarry = false;
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
 
 			return value;
 		}
 
 		private byte Rl(byte value)
 		{
-			var cc = Carry;
+			var cc = carry;
 
-			Carry = (value & 0x80) != 0;
+			carry = (value & 0x80) != 0;
 			value = (byte)((value << 1) | (cc ? 1 : 0));
 
-			Zero = value == 0;
-			Negative = false;
-			HalfCarry = false;
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
 
 			return value;
 		}
 
 		private byte Rr(byte value)
 		{
-			var cc = Carry;
+			var cc = carry;
 
-			Carry = (value & 1) != 0;
+			carry = (value & 1) != 0;
 			value = (byte)((value >> 1) | (cc ? (1 << 7) : 0));
 
-			Zero = value == 0;
-			Negative = false;
-			HalfCarry = false;
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
 
 			return value;
 		}
 
 		private byte Rlc(byte value)
 		{
-			Carry = (value & 0x80) != 0;
+			carry = (value & 0x80) != 0;
 			value = (byte)((value << 1) | (value >> 7));
 
-			Zero = value == 0;
-			Negative = false;
-			HalfCarry = false;
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
 
 			return value;
 		}
 
 		private byte Rrc(byte value)
 		{
-			Carry = (value & 0x01) != 0;
+			carry = (value & 0x01) != 0;
 			value = (byte)((value >> 1) | (value << 7));
 
-			Zero = value == 0;
-			Negative = false;
-			HalfCarry = false;
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
 
 			return value;
 		}
 
 		private byte Sla(byte value)
 		{
-			Carry = (value & 0x80) != 0;
+			carry = (value & 0x80) != 0;
 			value <<= 1;
 
-			Zero = value == 0;
-			Negative = false;
-			HalfCarry = false;
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
 
 			return value;
 		}
 
 		private byte Sra(byte value)
 		{
-			Carry = (value & 0x01) != 0;
+			carry = (value & 0x01) != 0;
 			value = (byte)((value >> 1) | (value & 0x80));
 
-			Zero = value == 0;
-			Negative = false;
-			HalfCarry = false;
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
 
 			return value;
 		}
@@ -622,10 +603,10 @@ namespace SpecBoy
 		{
 			value = (byte)((value >> 4) | (value << 4));
 
-			Zero = value == 0;
-			Negative = false;
-			HalfCarry = false;
-			Carry = false;
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
+			carry = false;
 
 			return value;
 		}
@@ -733,7 +714,7 @@ namespace SpecBoy
 				// RLCA - Same as RLC A but Zero always false
 				case 0x07:
 					A = Rlc(A);
-					Zero = false;
+					zero = false;
 					break;
 
 				// LD (u16), SP
@@ -776,13 +757,13 @@ namespace SpecBoy
 				// RRCA - same as RRC A except Zero always false
 				case 0xf:
 					A = Rrc(A);
-					Zero = false;
+					zero = false;
 					break;
 
 				// RLA  - same as RL A except Zero always false
 				case 0x17:
 					A = Rl(A);
-					Zero = false;
+					zero = false;
 					break;
 
 				// LD A, (DE)
@@ -793,7 +774,7 @@ namespace SpecBoy
 				// RRA - same as RR A except Zero always false
 				case 0x1f:
 					A = Rr(A);
-					Zero = false;
+					zero = false;
 					break;
 					
 					// LD A, (HL+)
@@ -820,22 +801,22 @@ namespace SpecBoy
 				// CPL
 				case 0x2f:
 					A = (byte)~A;
-					Negative = true;
-					HalfCarry = true;
+					negative = true;
+					halfCarry = true;
 					break;
 
 				// SCF
 				case 0x37:
-					Negative = false;
-					HalfCarry = false;
-					Carry = true;
+					negative = false;
+					halfCarry = false;
+					carry = true;
 					break;
 
 				// CCF
 				case 0x3f:
-					Negative = false;
-					HalfCarry = false;
-					Carry = !Carry;
+					negative = false;
+					halfCarry = false;
+					carry = !carry;
 					break;
 
 				// LD R8, R8
@@ -1018,6 +999,7 @@ namespace SpecBoy
 							// Something has gone seriously wrong if we reach here
 							throw new InvalidOperationException("Unimplemented CB instruction");
 					}
+
 					break;
 
 				// ADC A, u8
@@ -1118,6 +1100,19 @@ namespace SpecBoy
 
 				default:
 					throw new InvalidOperationException($"Unimplemented instruction {opcode:X2} at PC: {PC:X4}");
+			}
+		}
+
+		[StructLayout(LayoutKind.Explicit)]
+		private struct Reg16
+		{
+			[FieldOffset(0)] public ushort R16;
+			[FieldOffset(0)] public byte R8Low;
+			[FieldOffset(1)] public byte R8High;
+
+			public static implicit operator ushort(Reg16 reg)
+			{
+				return reg.R16;
 			}
 		}
 	}
