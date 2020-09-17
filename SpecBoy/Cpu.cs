@@ -632,7 +632,7 @@ namespace SpecBoy
 				case 0x00:
 					break;
 
-				// LD R16, u16
+				// LD r16, u16
 				case 0x01:
 				case 0x11:
 				case 0x21:
@@ -722,7 +722,7 @@ namespace SpecBoy
 					WriteWord(ReadNextWord(), SP);
 					break;
 
-				// ADD HL, R16
+				// ADD HL, r16
 				case 0x09:
 				case 0x19:
 				case 0x29:
@@ -731,7 +731,7 @@ namespace SpecBoy
 					AddHl(regId);
 					break;
 
-				// DEC R16
+				// DEC r16
 				case 0x0b:
 				case 0x1b:
 				case 0x2b:
@@ -850,12 +850,12 @@ namespace SpecBoy
 					And(GetR8(opcode & 0x07));
 					break;
 
-				// XOR A, R8
+				// XOR A, r8
 				case var n when n >= 0xa8 && n <= 0xaf:
 					Xor(GetR8(opcode & 0x07));
 					break;
 
-				// OR A, R8
+				// OR A, r8
 				case var n when n >= 0xb0 && n <= 0xb7:
 					Or(GetR8(opcode & 0x07));
 					break;
@@ -865,7 +865,7 @@ namespace SpecBoy
 					Cp(GetR8(opcode & 0x07));
 					break;
 
-				// POP R16
+				// POP r16
 				case 0xc1:
 				case 0xd1:
 				case 0xe1:
@@ -892,7 +892,7 @@ namespace SpecBoy
 					Call(opcode);
 					break;
 
-				// PUSH R16
+				// PUSH r16
 				case 0xc5:
 				case 0xd5:
 				case 0xe5:
@@ -901,7 +901,7 @@ namespace SpecBoy
 					Push(GetR16(regId, false));
 					break;
 
-				// ADD A, R8
+				// ADD A, r8
 				case var n when n >= 0xb0 && n <= 0xb7:
 					Add(GetR8(opcode & 0x7));
 					break;
@@ -935,71 +935,7 @@ namespace SpecBoy
 
 				// CB Prefix
 				case 0xcb:
-					opcode = ReadNextByte();
-					regId = opcode & 0x07;
-
-					switch (opcode)
-					{
-						// RLC r8
-						case var n when n >= 0x00 && n <= 0x07:
-							SetR8(regId, Rlc(GetR8(regId)));
-							break;
-
-						// RRC r8
-						case var n when n >= 0x08 && n <= 0x0f:
-							SetR8(regId, Rrc(GetR8(regId)));
-							break;
-
-						// RL r8
-						case var n when n >= 0x10 && n <= 0x17:
-							SetR8(regId, Rl(GetR8(regId)));
-							break;
-
-						// RR r8
-						case var n when n >= 0x18 && n <= 0x1f:
-							SetR8(regId, Rr(GetR8(regId)));
-							break;
-
-						// SLA r8
-						case var n when n >= 0x20 && n <= 0x27:
-							SetR8(regId, Sla(GetR8(regId)));
-							break;
-
-						// SRA r8
-						case var n when n >= 0x28 && n <= 0x2f:
-							SetR8(regId, Sra(GetR8(regId)));
-							break;
-
-						// SWAP r8
-						case var n when n >= 0x30 && n <= 0x37:
-							SetR8(regId, Swap(GetR8(regId)));
-							break;
-
-						// SRL r8
-						case var n when n >= 0x38 && n <= 0x3f:
-							SetR8(regId, Srl(GetR8(regId)));
-							break;
-
-						// BIT
-						case var n when n >= 0x40 && n <= 0x7f:
-							Bit(GetR8(regId), (opcode >> 3) & 0x07);
-							break;
-				
-						// RES
-						case var n when n >= 0x80 && n <= 0xbf:
-							SetR8(regId, Res(GetR8(regId), (opcode >> 3) & 0x07));
-							break;
-
-						// SET
-						case var n when n >= 0xc0 && n <= 0xff:
-							SetR8(regId, Set(GetR8(regId), (opcode >> 3) & 0x07));
-							break;
-
-						default:
-							// Something has gone seriously wrong if we reach here
-							throw new InvalidOperationException("Unimplemented CB instruction");
-					}
-
+					DecodeCB();
 					break;
 
 				// ADC A, u8
@@ -1100,6 +1036,74 @@ namespace SpecBoy
 
 				default:
 					throw new InvalidOperationException($"Unimplemented instruction {opcode:X2} at PC: {PC:X4}");
+			}
+		}
+
+		private void DecodeCB()
+		{
+			var opcode = ReadNextByte();
+			var regId = opcode & 0x07;
+
+			switch (opcode)
+			{
+				// RLC r8
+				case var n when n >= 0x00 && n <= 0x07:
+					SetR8(regId, Rlc(GetR8(regId)));
+					break;
+
+				// RRC r8
+				case var n when n >= 0x08 && n <= 0x0f:
+					SetR8(regId, Rrc(GetR8(regId)));
+					break;
+
+				// RL r8
+				case var n when n >= 0x10 && n <= 0x17:
+					SetR8(regId, Rl(GetR8(regId)));
+					break;
+
+				// RR r8
+				case var n when n >= 0x18 && n <= 0x1f:
+					SetR8(regId, Rr(GetR8(regId)));
+					break;
+
+				// SLA r8
+				case var n when n >= 0x20 && n <= 0x27:
+					SetR8(regId, Sla(GetR8(regId)));
+					break;
+
+				// SRA r8
+				case var n when n >= 0x28 && n <= 0x2f:
+					SetR8(regId, Sra(GetR8(regId)));
+					break;
+
+				// SWAP r8
+				case var n when n >= 0x30 && n <= 0x37:
+					SetR8(regId, Swap(GetR8(regId)));
+					break;
+
+				// SRL r8
+				case var n when n >= 0x38 && n <= 0x3f:
+					SetR8(regId, Srl(GetR8(regId)));
+					break;
+
+				// BIT
+				case var n when n >= 0x40 && n <= 0x7f:
+					Bit(GetR8(regId), (opcode >> 3) & 0x07);
+					break;
+
+				// RES
+				case var n when n >= 0x80 && n <= 0xbf:
+					SetR8(regId, Res(GetR8(regId), (opcode >> 3) & 0x07));
+					break;
+
+				// SET
+				case var n when n >= 0xc0 && n <= 0xff:
+					SetR8(regId, Set(GetR8(regId), (opcode >> 3) & 0x07));
+					break;
+
+				default:
+					// Something has gone seriously wrong if we reach here
+					throw new InvalidOperationException("Unimplemented CB instruction");
 			}
 		}
 
