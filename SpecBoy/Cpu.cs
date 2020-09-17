@@ -105,9 +105,9 @@ namespace SpecBoy
 			SP = 0xfffe;
 		}
 
-		private byte IncR8(int reg)
+		private byte IncR8(int r8)
 		{
-			byte result = GetR8(reg);
+			byte result = GetR8(r8);
 			result++;
 
 			Zero = result == 0;
@@ -117,9 +117,9 @@ namespace SpecBoy
 			return result;
 		}
 
-		private byte DecR8(int reg)
+		private byte DecR8(int r8)
 		{
-			byte result = GetR8(reg);
+			byte result = GetR8(r8);
 			result--;
 
 			Zero = result == 0;
@@ -129,47 +129,36 @@ namespace SpecBoy
 			return result;
 		}
 
-		private ushort IncR16(int reg)
+		private ushort IncR16(int r16)
 		{
 			Cycles++;
-			return (ushort)(GetR16(reg) + 1);
+			return (ushort)(GetR16(r16) + 1);
 		}
 
-		private ushort DecR16(int reg)
+		private ushort DecR16(int r16)
 		{
 			Cycles++;
-			return (ushort)(GetR16(reg) - 1);
+			return (ushort)(GetR16(r16) - 1);
 		}
 
 		// Can get either SP or AF depening on bool
-		private ushort GetR16(int reg, bool usesSP = true)
+		private ushort GetR16(int r16, bool usesSP = true)
 		{
-			if (usesSP)
+			return r16 switch
 			{
-				return reg switch
-				{
-					0 => BC,
-					1 => DE,
-					2 => HL,
-					_ => SP
-				};
-			}
+				0 => BC,
+				1 => DE,
+				2 => HL,
+				3 => usesSP ? SP : AF,
+				_ => throw new ArgumentException($"Attempt to get invalid R16 identifier. R16 was {r16}", "r16")
+			};
 
-			else
-			{
-				return reg switch
-				{
-					0 => BC,
-					1 => DE,
-					2 => HL,
-					_ => AF
-				};
-			}
 		}
+
 		// Can set either SP or AF depening on bool
-		private void SetR16(int reg, ushort value, bool usesSP = true)
+		private void SetR16(int r16, ushort value, bool usesSP = true)
 		{
-			switch (reg)
+			switch (r16)
 			{
 				case 0:
 					BC = value;
@@ -183,7 +172,7 @@ namespace SpecBoy
 					HL = value;
 					break;
 
-				default:
+				case 3:
 					if (usesSP)
 					{
 						SP = value;
@@ -193,12 +182,15 @@ namespace SpecBoy
 						AF = value;
 					}
 					break;
+
+				default:
+					throw new ArgumentException($"Attempt to set invalid R16 identifier. R16 was {r16}", "r16");
 			}
 		}
 
-		private byte GetR8(int reg)
+		private byte GetR8(int r8)
 		{
-			return reg switch
+			return r8 switch
 			{
 				0 => B,
 				1 => C,
@@ -207,13 +199,14 @@ namespace SpecBoy
 				4 => H,
 				5 => L,
 				6 => ReadByte(HL),
-				_ => A
+				7 => A,
+				_ => throw new ArgumentException($"Attempt to get invalid R8 identifier. R8 was {r8}", "r8")
 			};
 		}
 
-		private void SetR8(int reg, byte value)
+		private void SetR8(int r8, byte value)
 		{
-			switch (reg)
+			switch (r8)
 			{
 				case 0:
 					B = value;
@@ -243,9 +236,12 @@ namespace SpecBoy
 					WriteByte(HL, value);
 					break;
 
-				default:
+				case 7:
 					A = value;
 					break;
+
+				default:
+					throw new ArgumentException($"Attempt to set invalid R8 identifier. R8 was {r8}", "r8");
 			}
 		}
 
@@ -431,11 +427,11 @@ namespace SpecBoy
 			A = (byte)result;
 		}
 
-		private void AddHl(int reg)
+		private void AddHl(int r16)
 		{
 			Cycles++;
 
-			ushort value = GetR16(reg);
+			ushort value = GetR16(r16);
 			ushort result = (ushort)(HL + value);
 
 			Negative = false;
@@ -564,7 +560,7 @@ namespace SpecBoy
 		{
 			var cc = Carry;
 
-			Carry = (value & 1) == 1;
+			Carry = (value & 1) != 0;
 			value = (byte)((value >> 1) | (cc ? (1 << 7) : 0));
 
 			Zero = value == 0;
@@ -646,7 +642,7 @@ namespace SpecBoy
 
 		public void Execute()
 		{
-			int registerId;
+			int regId;
 			byte opcode = ReadNextByte();
 
 			switch (opcode)
@@ -660,8 +656,8 @@ namespace SpecBoy
 				case 0x11:
 				case 0x21:
 				case 0x31:
-					registerId = (opcode >> 4) & 0x03;
-					SetR16(registerId, ReadNextWord());
+					regId = (opcode >> 4) & 0x03;
+					SetR16(regId, ReadNextWord());
 					break;
 
 				// LD (BC), A
@@ -691,8 +687,8 @@ namespace SpecBoy
 				case 0x13:
 				case 0x23:
 				case 0x33:
-					registerId = (opcode >> 4) & 0x03;
-					SetR16(registerId, IncR16(registerId));
+					regId = (opcode >> 4) & 0x03;
+					SetR16(regId, IncR16(regId));
 					break;
 				
 				// INC R8
@@ -704,8 +700,8 @@ namespace SpecBoy
 				case 0x1c:
 				case 0x2c:
 				case 0x3c:
-					registerId = (opcode >> 3) & 0x07;
-					SetR8(registerId, IncR8(registerId));
+					regId = (opcode >> 3) & 0x07;
+					SetR8(regId, IncR8(regId));
 					break;
 
 				// DEC R8
@@ -717,8 +713,8 @@ namespace SpecBoy
 				case 0x1d:
 				case 0x2d:
 				case 0x3d:
-					registerId = (opcode >> 3) & 0x07;
-					SetR8(registerId, DecR8(registerId));
+					regId = (opcode >> 3) & 0x07;
+					SetR8(regId, DecR8(regId));
 					break;
 
 				// LD R8, u8
@@ -730,8 +726,8 @@ namespace SpecBoy
 				case 0x1e:
 				case 0x2e:
 				case 0x3e:
-					registerId = (opcode >> 3) & 0x07;
-					SetR8(registerId, ReadNextByte());
+					regId = (opcode >> 3) & 0x07;
+					SetR8(regId, ReadNextByte());
 					break;
 
 				// RLCA - Same as RLC A but Zero always false
@@ -750,8 +746,8 @@ namespace SpecBoy
 				case 0x19:
 				case 0x29:
 				case 0x39:
-					registerId = (opcode >> 4) & 0x03;
-					AddHl(registerId);
+					regId = (opcode >> 4) & 0x03;
+					AddHl(regId);
 					break;
 
 				// DEC R16
@@ -759,8 +755,8 @@ namespace SpecBoy
 				case 0x1b:
 				case 0x2b:
 				case 0x3b:
-					registerId = (opcode >> 4) & 0x03;
-					SetR16(registerId, DecR16(registerId));
+					regId = (opcode >> 4) & 0x03;
+					SetR16(regId, DecR16(regId));
 					break;
 
 				// STOP
@@ -844,8 +840,8 @@ namespace SpecBoy
 
 				// LD R8, R8
 				case var n when n >= 0x40 && n <= 0x7f && n != 0x76:
-					registerId = (opcode >> 3) & 0x07;
-					SetR8(registerId, GetR8(opcode & 0x07));
+					regId = (opcode >> 3) & 0x07;
+					SetR8(regId, GetR8(opcode & 0x07));
 					break;
 
 				// ADD A, r8
@@ -893,8 +889,8 @@ namespace SpecBoy
 				case 0xd1:
 				case 0xe1:
 				case 0xf1:
-					registerId = (opcode >> 4) & 0x03;
-					Pop(registerId);
+					regId = (opcode >> 4) & 0x03;
+					Pop(regId);
 					break;
 
 				// JP
@@ -920,8 +916,8 @@ namespace SpecBoy
 				case 0xd5:
 				case 0xe5:
 				case 0xf5:
-					registerId = (opcode >> 4) & 0x03;
-					Push(GetR16(registerId, false));
+					regId = (opcode >> 4) & 0x03;
+					Push(GetR16(regId, false));
 					break;
 
 				// ADD A, R8
@@ -953,81 +949,73 @@ namespace SpecBoy
 				case 0xef:
 				case 0xff:
 					Push(PC);
-					PC = ((ushort)(opcode & 0x38));
+					PC = (ushort)(opcode & 0x38);
 					break;
 
 				// CB Prefix
 				case 0xcb:
 					opcode = ReadNextByte();
+					regId = opcode & 0x07;
 
 					switch (opcode)
 					{
 						// RLC r8
 						case var n when n >= 0x00 && n <= 0x07:
-							registerId = opcode & 0x07;
-							SetR8(registerId, Rlc(GetR8(registerId)));
+							SetR8(regId, Rlc(GetR8(regId)));
 							break;
 
 						// RRC r8
 						case var n when n >= 0x08 && n <= 0x0f:
-							registerId = opcode & 0x07;
-							SetR8(registerId, Rrc(GetR8(registerId)));
+							SetR8(regId, Rrc(GetR8(regId)));
 							break;
 
 						// RL r8
 						case var n when n >= 0x10 && n <= 0x17:
-							registerId = opcode & 0x07;
-							SetR8(registerId, Rl(GetR8(registerId)));
+							SetR8(regId, Rl(GetR8(regId)));
 							break;
 
 						// RR r8
 						case var n when n >= 0x18 && n <= 0x1f:
-							registerId = opcode & 0x07;
-							SetR8(registerId, Rr(GetR8(registerId)));
+							SetR8(regId, Rr(GetR8(regId)));
 							break;
 
 						// SLA r8
 						case var n when n >= 0x20 && n <= 0x27:
-							registerId = opcode & 0x07;
-							SetR8(registerId, Sla(GetR8(registerId)));
+							SetR8(regId, Sla(GetR8(regId)));
 							break;
 
 						// SRA r8
 						case var n when n >= 0x28 && n <= 0x2f:
-							registerId = opcode & 0x07;
-							SetR8(registerId, Sra(GetR8(registerId)));
+							SetR8(regId, Sra(GetR8(regId)));
 							break;
 
-						// Swap r8
+						// SWAP r8
 						case var n when n >= 0x30 && n <= 0x37:
-							registerId = opcode & 0x07;
-							SetR8(registerId, Swap(GetR8(registerId)));
+							SetR8(regId, Swap(GetR8(regId)));
 							break;
 
-						// SRL R8
+						// SRL r8
 						case var n when n >= 0x38 && n <= 0x3f:
-							registerId = opcode & 0x07;
-							SetR8(registerId, Srl(GetR8(registerId)));
+							SetR8(regId, Srl(GetR8(regId)));
 							break;
 
 						// BIT
 						case var n when n >= 0x40 && n <= 0x7f:
-							Bit(GetR8(opcode & 0x7), (opcode >> 3) & 0x07);
+							Bit(GetR8(regId), (opcode >> 3) & 0x07);
 							break;
 				
 						// RES
 						case var n when n >= 0x80 && n <= 0xbf:
-							registerId = opcode & 0x07;
-							SetR8(registerId, Res(GetR8(registerId), (opcode >> 3) & 0x07));
+							SetR8(regId, Res(GetR8(regId), (opcode >> 3) & 0x07));
 							break;
 
 						// SET
 						case var n when n >= 0xc0 && n <= 0xff:
-							registerId = opcode & 0x07;
-							SetR8(registerId, Set(GetR8(registerId), (opcode >> 3) & 0x07));
+							SetR8(regId, Set(GetR8(regId), (opcode >> 3) & 0x07));
 							break;
 
 						default:
+							// Something has gone seriously wrong if we reach here
 							throw new InvalidOperationException("Unimplemented CB instruction");
 					}
 					break;
@@ -1077,7 +1065,7 @@ namespace SpecBoy
 					PC = HL;
 					break;
 
-				// LD (U16), A
+				// LD (u16), A
 				case 0xea:
 					WriteByte(ReadNextWord(), A);
 					break;
@@ -1114,8 +1102,8 @@ namespace SpecBoy
 
 				// LD SP, HL
 				case 0xf9:
-					SP = HL;
 					Cycles++;
+					SP = HL;
 					break;
 
 				// LD A, (u16)
@@ -1129,7 +1117,7 @@ namespace SpecBoy
 					break;
 
 				default:
-					throw new InvalidOperationException("Unimplemented instruction");
+					throw new InvalidOperationException($"Unimplemented instruction {opcode:X2} at PC: {PC:X4}");
 			}
 		}
 	}
