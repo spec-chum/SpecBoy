@@ -1167,20 +1167,20 @@ namespace SpecBoy
 		public void InterruptHandler()
 		{
 			ushort vector = 0;
-			var ie = mem.IE;
-			bool activated = (ie & mem.IF) != 0;
 
-			if (activated)
+			// Check if any interrupts are pending
+			if ((mem.IE & mem.IF) != 0)
 			{
 				isHalted = false;
 
+				// Only fire if interrupts actually enabled
 				if (ime)
 				{
-					if (timers.TimaIRQReq && Utility.IsBitSet(ie, 2))
+					if (timers.TimaIRQReq && Utility.IsBitSet(mem.IE, 2))
 					{
 						timers.TimaIRQReq = false;
 						Utility.ClearBit(mem.IF, 2);
-						vector = 0x50;
+						vector = Timers.IRQVector;
 					}
 
 					DispatchInterrupt(vector);

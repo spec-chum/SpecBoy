@@ -4,6 +4,8 @@ namespace SpecBoy
 {
 	class Timers
 	{
+		public const ushort IRQVector = 0x50;
+
 		private readonly ushort[] modulos = new ushort[] { 1024, 16, 64, 256 };
 		private ushort divCounter;
 		private ushort timaCounter;
