@@ -4,18 +4,10 @@ namespace SpecBoy
 {
 	class Timers
 	{
-		// 00: 4096 = 1024
-		// 01: 262144 = 16
-		// 10: 65536 = 64
-		// 11: 16384 = 256
-
-		// Counters
+		private readonly ushort[] modulos = new ushort[] { 1024, 16, 64, 256 };
 		private ushort divCounter;
 		private ushort timaCounter;
-
 		private byte div;
-
-		private readonly int[] modulos = new int[] { 1024, 16, 64, 256 };
 
 		public Timers()
 		{
@@ -23,6 +15,7 @@ namespace SpecBoy
 			Tima = 0;
 			Tma = 0;
 			Tac = 0;
+			TimaIRQReq = false;
 		}
 
 		// Registers
@@ -40,30 +33,23 @@ namespace SpecBoy
 		{
 			if (Utility.IsBitSet(Tac, 2))
 			{
-				int modulo = modulos[Tac & 3];
+				ushort modulo = modulos[Tac & 0x03];
 
+				divCounter += 4;
 				timaCounter += 4;
 
-				while (timaCounter >= modulo)
+				if (timaCounter == modulo)
 				{
-					timaCounter -= (ushort)modulo;
+					timaCounter = 0;
+					Tima++;
 
-					if (Tima == 0xff)
+					if (Tima == 0)
 					{
 						Tima = Tma;
 						TimaIRQReq = true;
 					}
-					else
-					{
-						Tima++;
-					}
 				}
 			}
-
-			divCounter += 4;
-			
-			//Div += (byte)(divCounter >> 8);
-			//divCounter -= (ushort)(divCounter & 0x100);
 		}
 	}
 }

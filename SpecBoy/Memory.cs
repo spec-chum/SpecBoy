@@ -58,6 +58,10 @@ namespace SpecBoy
 					timers.Div = 0;
 					break;
 
+				case 0xff05:
+					timers.Tima = value;
+					break;
+
 				case 0xff06:
 					timers.Tma = value;
 					break;

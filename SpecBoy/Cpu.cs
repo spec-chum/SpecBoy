@@ -91,14 +91,12 @@ namespace SpecBoy
 
 		public ushort SP { get; set; }
 
-		// Use T cycle count
 		public int Cycles
 		{
 			get => cycles;
 
 			set
 			{
-				//timers.Update((value - cycles) * 4);
 				timers.Update();
 				cycles = value;
 			}
@@ -127,7 +125,7 @@ namespace SpecBoy
 			};
 		}
 
-		// Can set either SP or AF depening on bool
+		// Can set either SP or AF depending on bool
 		private void SetR16(int r16, ushort value, bool usesSP = true)
 		{
 			switch (r16)
@@ -314,7 +312,6 @@ namespace SpecBoy
 			// Handle unconditional CALL or test condition
 			if (opcode == 0xcd || TestCondition(opcode))
 			{
-				Cycles++;
 				Push(PC);
 				PC = address;
 			}
@@ -348,13 +345,17 @@ namespace SpecBoy
 		{
 			Cycles++;
 
-			var condition = TestCondition(opcode);
+			var condition = opcode != 0xc9 && TestCondition(opcode);
 
 			// Handle unconditional RET or test condition
 			if (opcode == 0xc9 || condition)
 			{
 				// Add extra cycle if conditional
-				Cycles += condition ? 1 : 0;
+				if (condition)
+				{
+					Cycles++;
+				}
+
 				PC = Pop();
 			}
 		}
@@ -362,6 +363,7 @@ namespace SpecBoy
 		private void Reti()
 		{
 			Ei();
+			Cycles++;
 			PC = Pop();
 		}
 
@@ -461,7 +463,6 @@ namespace SpecBoy
 
 		private void AddSp(byte i8)
 		{
-			//Cycles += 2;
 			Cycles++;
 			Cycles++;
 
@@ -654,6 +655,7 @@ namespace SpecBoy
 
 			if (isHalted)
 			{
+				// Emulate NOP, so increase cycles
 				Cycles++;
 				return;
 			}
@@ -1154,11 +1156,11 @@ namespace SpecBoy
 
 		private void DispatchInterrupt(ushort vector)
 		{
-			//Cycles += 2;    // 5M (20T) cycles in total
-			Cycles++;
-			Cycles++;
+			// 5M (20T) cycles in total
 			Push(PC);       // 3M (12T) cycles
 			PC = vector;
+			Cycles++;
+			Cycles++;
 			Di();
 		}
 
