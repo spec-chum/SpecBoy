@@ -6,6 +6,7 @@ namespace SpecBoy
 	class Cpu
 	{
 		private readonly Memory mem;
+		private readonly Timers timers;
 
 		// Flags - discrete, so we're not wasting cycles on bitwise ops
 		private bool zero;
@@ -13,22 +14,34 @@ namespace SpecBoy
 		private bool halfCarry;
 		private bool carry;
 
+		private bool isHalted;
+
 		// Registers
 		private Reg16 af;
 		private Reg16 bc;
 		private Reg16 de;
 		private Reg16 hl;
 
-		public Cpu(Memory mem)
+		// Interrupt Master Enable flag
+		private bool ime;
+
+		private int cycles;
+
+		public Cpu(Memory mem, Timers timers)
 		{
 			this.mem = mem;
+			this.timers = timers;
 
 			AF = 0x01b0;
 			BC = 0x0013;
 			DE = 0x00d8;
 			HL = 0x014d;
-			PC = 0x100;
+			PC = 0x0100;
 			SP = 0xfffe;
+
+			cycles = 0;
+			isHalted = false;
+			ime = false;
 		}
 
 		// Only really needed for PUSH AF and POP AF
@@ -51,8 +64,8 @@ namespace SpecBoy
 			}
 		}
 
-		private byte A { get => af.R8High; set => af.R8High = value; }
-		private byte F
+		public byte A { get => af.R8High; set => af.R8High = value; }
+		public byte F
 		{
 			// Don't want F being altered directly, so only use getter
 			get
@@ -62,22 +75,34 @@ namespace SpecBoy
 			}
 		}
 
-		private ushort BC { get => bc; set => bc.R16 = value; }
-		private byte B { get => bc.R8High; set => bc.R8High = value; }
-		private byte C { get => bc.R8Low; set => bc.R8Low = value; }
+		public ushort BC { get => bc; set => bc.R16 = value; }
+		public byte B { get => bc.R8High; set => bc.R8High = value; }
+		public byte C { get => bc.R8Low; set => bc.R8Low = value; }
 
-		private ushort DE { get => de; set => de.R16 = value; }
-		private byte D { get => de.R8High; set => de.R8High = value; }
-		private byte E { get => de.R8Low; set => de.R8Low = value; }
+		public ushort DE { get => de; set => de.R16 = value; }
+		public byte D { get => de.R8High; set => de.R8High = value; }
+		public byte E { get => de.R8Low; set => de.R8Low = value; }
 
-		private ushort HL { get => hl; set => hl.R16 = value; }
-		private byte H { get => hl.R8High; set => hl.R8High = value; }
-		private byte L { get => hl.R8Low; set => hl.R8Low = value; }
+		public ushort HL { get => hl; set => hl.R16 = value; }
+		public byte H { get => hl.R8High; set => hl.R8High = value; }
+		public byte L { get => hl.R8Low; set => hl.R8Low = value; }
 
-		private ushort PC { get; set; }
-		private ushort SP { get; set; }
+		public ushort PC { get; set; }
 
-		private int Cycles { get; set; }
+		public ushort SP { get; set; }
+
+		// Use T cycle count
+		public int Cycles
+		{
+			get => cycles;
+
+			set
+			{
+				//timers.Update((value - cycles) * 4);
+				timers.Update();
+				cycles = value;
+			}
+		}
 
 		private void UpdateFlags()
 		{
@@ -88,7 +113,8 @@ namespace SpecBoy
 
 			af.R8Low = (byte)flags;
 		}
-		// Can get either SP or AF depening on bool
+
+		// Can get either SP or AF depending on bool
 		private ushort GetR16(int r16, bool usesSP = true)
 		{
 			return r16 switch
@@ -198,27 +224,21 @@ namespace SpecBoy
 			return mem.ReadByte(address);
 		}
 
-		private ushort ReadWord(int address)
-		{
-			Cycles += 2;
-			return mem.ReadWord(address);
-		}
-
 		private byte ReadNextByte()
 		{
-			Cycles++;
-			var num = mem.ReadByte(PC);
-			PC++;
-			return num;
+			return ReadByte(PC++);
+		}
+
+		private ushort ReadWord(int address)
+		{
+			return (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
 		}
 
 		private ushort ReadNextWord()
 		{
-			Cycles += 2;
-			var num = mem.ReadWord(PC);
-			PC += 2;
-			return num;
+			return (ushort)(ReadNextByte() | ReadNextByte() << 8);
 		}
+
 		private void WriteByte(int address, byte value)
 		{
 			Cycles++;
@@ -227,8 +247,8 @@ namespace SpecBoy
 
 		private void WriteWord(int address, ushort value)
 		{
-			Cycles += 2;
-			mem.WriteWord(address, value);
+			WriteByte(address, (byte)value);
+			WriteByte(address + 1, (byte)(value >> 8));
 		}
 
 		private byte IncR8(int r8)
@@ -360,7 +380,12 @@ namespace SpecBoy
 
 		private void Ei()
 		{
+			ime = true;
+		}
 
+		private void Di()
+		{
+			ime = false;
 		}
 
 		private void Daa()
@@ -436,7 +461,9 @@ namespace SpecBoy
 
 		private void AddSp(byte i8)
 		{
-			Cycles += 2;
+			//Cycles += 2;
+			Cycles++;
+			Cycles++;
 
 			zero = false;
 			negative = false;
@@ -623,6 +650,14 @@ namespace SpecBoy
 
 		public void Execute()
 		{
+			InterruptHandler();
+
+			if (isHalted)
+			{
+				Cycles++;
+				return;
+			}
+
 			int regId;
 			byte opcode = ReadNextByte();
 
@@ -825,6 +860,11 @@ namespace SpecBoy
 					SetR8(regId, GetR8(opcode & 0x07));
 					break;
 
+				// HALT
+				case 0x76:
+					isHalted = true;
+					break;
+
 				// ADD A, r8
 				case var n when n >= 0x80 && n <= 0x87:
 					Add(GetR8(opcode & 0x07));
@@ -1003,9 +1043,9 @@ namespace SpecBoy
 					A = ReadByte(0xff00 + C);
 					break;
 
-				// Todo: EI DI - just break for now
+				// DI
 				case 0xf3:
-				case 0xfb:
+					Di();
 					break;
 
 				// OR A, u16
@@ -1020,13 +1060,18 @@ namespace SpecBoy
 
 				// LD SP, HL
 				case 0xf9:
-					Cycles++;
 					SP = HL;
+					Cycles++;
 					break;
 
 				// LD A, (u16)
 				case 0xfa:
 					A = ReadByte(ReadNextWord());
+					break;
+
+				// EI
+				case 0xfb:
+					Ei();
 					break;
 
 				// CP A, u8
@@ -1104,6 +1149,40 @@ namespace SpecBoy
 				default:
 					// Something has gone seriously wrong if we reach here
 					throw new InvalidOperationException("Unimplemented CB instruction");
+			}
+		}
+
+		private void DispatchInterrupt(ushort vector)
+		{
+			//Cycles += 2;    // 5M (20T) cycles in total
+			Cycles++;
+			Cycles++;
+			Push(PC);       // 3M (12T) cycles
+			PC = vector;
+			Di();
+		}
+
+		public void InterruptHandler()
+		{
+			ushort vector = 0;
+			var ie = mem.IE;
+			bool activated = (ie & mem.IF) != 0;
+
+			if (activated)
+			{
+				isHalted = false;
+
+				if (ime)
+				{
+					if (timers.TimaIRQReq && Utility.IsBitSet(ie, 2))
+					{
+						timers.TimaIRQReq = false;
+						Utility.ClearBit(mem.IF, 2);
+						vector = 0x50;
+					}
+
+					DispatchInterrupt(vector);
+				}
 			}
 		}
 
