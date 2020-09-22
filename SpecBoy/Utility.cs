@@ -17,9 +17,21 @@ namespace SpecBoy
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static void SetBit(ref byte value, int bit)
+		{
+			value |= (byte)(1 << bit);
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static byte ClearBit(byte value, int bit)
 		{
 			return (byte)(value & (~(1 << bit)));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static void ClearBit(ref byte value, int bit)
+		{
+			value &= (byte)~(1 << bit);
 		}
 	}
 }

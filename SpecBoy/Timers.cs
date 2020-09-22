@@ -1,15 +1,13 @@
-﻿using System.Runtime.CompilerServices;
-
-namespace SpecBoy
+﻿namespace SpecBoy
 {
 	class Timers
 	{
-		public const ushort IRQVector = 0x50;
+		public const ushort TimerIrqVector = 0x50;
+		public const int TimerIeBit = 2;
 
-		private readonly ushort[] modulos = new ushort[] { 1024, 16, 64, 256 };
 		private ushort divCounter;
-		private ushort timaCounter;
-		private byte div;
+
+		private bool lastResult = false;
 
 		public Timers()
 		{
@@ -17,11 +15,14 @@ namespace SpecBoy
 			Tima = 0;
 			Tma = 0;
 			Tac = 0;
-			TimaIRQReq = false;
+			TimaIrqReq = false;
+			ReloadTima = false;
 		}
 
 		// Registers
-		public byte Div { get => (byte)((divCounter >> 8) & 0xff); set => div = value; }
+
+		// Writing to Div always sets it to 0
+		public byte Div { get => (byte)((divCounter >> 8) & 0xff); set => divCounter = 0; }
 
 		public byte Tima { get; set; }
 
@@ -29,29 +30,46 @@ namespace SpecBoy
 
 		public byte Tac { get; set; }
 
-		public bool TimaIRQReq { get; set; }
+		public bool TimaIrqReq { get; set; }
+
+		public bool ReloadTima { get; set; }
+
+		public byte OldTima { get; set; }
 
 		public void Update()
 		{
-			if (Utility.IsBitSet(Tac, 2))
+			if (ReloadTima && OldTima == Tima)
 			{
-				ushort modulo = modulos[Tac & 0x03];
+				ReloadTima = false;
+				Tima = Tma;
+				TimaIrqReq = true;
+			}
 
-				divCounter += 4;
-				timaCounter += 4;
+			divCounter += 4;
 
-				if (timaCounter == modulo)
+			var divBit = (Tac & 0x03) switch
+			{
+
+				0 => 9,
+				1 => 3,
+				2 => 5,
+				_ => 7,
+			};
+
+			bool result = ((Tac & (1 << 2)) != 0) & ((divCounter & (1 << divBit)) != 0);
+
+			if (lastResult && !result)
+			{
+				Tima++;
+
+				if (Tima == 0)
 				{
-					timaCounter = 0;
-					Tima++;
-
-					if (Tima == 0)
-					{
-						Tima = Tma;
-						TimaIRQReq = true;
-					}
+					ReloadTima = true;
 				}
 			}
+
+			OldTima = Tima;
+			lastResult = result;
 		}
 	}
 }

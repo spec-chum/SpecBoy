@@ -7,6 +7,7 @@ namespace SpecBoy
 	{
 		private readonly Memory mem;
 		private readonly Timers timers;
+		private readonly Ppu ppu;
 
 		// Flags - discrete, so we're not wasting cycles on bitwise ops
 		private bool zero;
@@ -27,10 +28,11 @@ namespace SpecBoy
 
 		private int cycles;
 
-		public Cpu(Memory mem, Timers timers)
+		public Cpu(Memory mem, Timers timers, Ppu ppu)
 		{
 			this.mem = mem;
 			this.timers = timers;
+			this.ppu = ppu;
 
 			AF = 0x01b0;
 			BC = 0x0013;
@@ -45,7 +47,7 @@ namespace SpecBoy
 		}
 
 		// Only really needed for PUSH AF and POP AF
-		private ushort AF
+		public ushort AF
 		{
 			get
 			{
@@ -53,7 +55,7 @@ namespace SpecBoy
 				return af.R16;
 			}
 
-			set
+			private set
 			{
 				af.R16 = value;
 
@@ -64,7 +66,7 @@ namespace SpecBoy
 			}
 		}
 
-		public byte A { get => af.R8High; set => af.R8High = value; }
+		public byte A { get => af.R8High; private set => af.R8High = value; }
 		public byte F
 		{
 			// Don't want F being altered directly, so only use getter
@@ -75,21 +77,21 @@ namespace SpecBoy
 			}
 		}
 
-		public ushort BC { get => bc; set => bc.R16 = value; }
-		public byte B { get => bc.R8High; set => bc.R8High = value; }
-		public byte C { get => bc.R8Low; set => bc.R8Low = value; }
+		public ushort BC { get => bc; private set => bc.R16 = value; }
+		public byte B { get => bc.R8High; private set => bc.R8High = value; }
+		public byte C { get => bc.R8Low; private set => bc.R8Low = value; }
 
-		public ushort DE { get => de; set => de.R16 = value; }
-		public byte D { get => de.R8High; set => de.R8High = value; }
-		public byte E { get => de.R8Low; set => de.R8Low = value; }
+		public ushort DE { get => de; private set => de.R16 = value; }
+		public byte D { get => de.R8High; private set => de.R8High = value; }
+		public byte E { get => de.R8Low; private set => de.R8Low = value; }
 
-		public ushort HL { get => hl; set => hl.R16 = value; }
-		public byte H { get => hl.R8High; set => hl.R8High = value; }
-		public byte L { get => hl.R8Low; set => hl.R8Low = value; }
+		public ushort HL { get => hl; private set => hl.R16 = value; }
+		public byte H { get => hl.R8High; private set => hl.R8High = value; }
+		public byte L { get => hl.R8Low; private set => hl.R8Low = value; }
 
-		public ushort PC { get; set; }
+		public ushort PC { get; private set; }
 
-		public ushort SP { get; set; }
+		public ushort SP { get; private set; }
 
 		public int Cycles
 		{
@@ -97,561 +99,14 @@ namespace SpecBoy
 
 			set
 			{
-				timers.Update();
+				OnCycleUpdate();
 				cycles = value;
 			}
 		}
 
-		private void UpdateFlags()
-		{
-			int flags = zero ? 1 << 7 : 0;
-			flags |= negative ? 1 << 6 : 0;
-			flags |= halfCarry ? 1 << 5 : 0;
-			flags |= carry ? 1 << 4 : 0;
-
-			af.R8Low = (byte)flags;
-		}
-
-		// Can get either SP or AF depending on bool
-		private ushort GetR16(int r16, bool usesSP = true)
-		{
-			return r16 switch
-			{
-				0 => BC,
-				1 => DE,
-				2 => HL,
-				3 => usesSP ? SP : AF,
-				_ => throw new ArgumentException($"Attempt to get invalid R16 identifier. R16 was {r16}", "r16")
-			};
-		}
-
-		// Can set either SP or AF depending on bool
-		private void SetR16(int r16, ushort value, bool usesSP = true)
-		{
-			switch (r16)
-			{
-				case 0:
-					BC = value;
-					break;
-
-				case 1:
-					DE = value;
-					break;
-
-				case 2:
-					HL = value;
-					break;
-
-				case 3:
-					if (usesSP)
-					{
-						SP = value;
-					}
-					else
-					{
-						AF = value;
-					}
-
-					break;
-
-				default:
-					throw new ArgumentException($"Attempt to set invalid R16 identifier. R16 was {r16}", "r16");
-			}
-		}
-
-		private byte GetR8(int r8)
-		{
-			return r8 switch
-			{
-				0 => B,
-				1 => C,
-				2 => D,
-				3 => E,
-				4 => H,
-				5 => L,
-				6 => ReadByte(HL),
-				7 => A,
-				_ => throw new ArgumentException($"Attempt to get invalid R8 identifier. R8 was {r8}", "r8")
-			};
-		}
-
-		private void SetR8(int r8, byte value)
-		{
-			switch (r8)
-			{
-				case 0:
-					B = value;
-					break;
-
-				case 1:
-					C = value;
-					break;
-
-				case 2:
-					D = value;
-					break;
-
-				case 3:
-					E = value;
-					break;
-
-				case 4:
-					H = value;
-					break;
-
-				case 5:
-					L = value;
-					break;
-
-				case 6:
-					WriteByte(HL, value);
-					break;
-
-				case 7:
-					A = value;
-					break;
-
-				default:
-					throw new ArgumentException($"Attempt to set invalid R8 identifier. R8 was {r8}", "r8");
-			}
-		}
-
-		private byte ReadByte(int address)
-		{
-			Cycles++;
-			return mem.ReadByte(address);
-		}
-
-		private byte ReadNextByte()
-		{
-			return ReadByte(PC++);
-		}
-
-		private ushort ReadWord(int address)
-		{
-			return (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
-		}
-
-		private ushort ReadNextWord()
-		{
-			return (ushort)(ReadNextByte() | ReadNextByte() << 8);
-		}
-
-		private void WriteByte(int address, byte value)
-		{
-			Cycles++;
-			mem.WriteByte(address, value);
-		}
-
-		private void WriteWord(int address, ushort value)
-		{
-			WriteByte(address, (byte)value);
-			WriteByte(address + 1, (byte)(value >> 8));
-		}
-
-		private byte IncR8(int r8)
-		{
-			byte result = GetR8(r8);
-			result++;
-
-			zero = result == 0;
-			halfCarry = (result & 0x0f) == 0;
-			negative = false;
-
-			return result;
-		}
-
-		private byte DecR8(int r8)
-		{
-			byte result = GetR8(r8);
-			result--;
-
-			zero = result == 0;
-			halfCarry = (result & 0x0f) == 0x0f;
-			negative = true;
-
-			return result;
-		}
-
-		private ushort IncR16(int r16)
-		{
-			Cycles++;
-			return (ushort)(GetR16(r16) + 1);
-		}
-
-		private ushort DecR16(int r16)
-		{
-			Cycles++;
-			return (ushort)(GetR16(r16) - 1);
-		}
-
-		private void Push(ushort address)
-		{
-			Cycles++;
-			SP -= 2;
-			WriteWord(SP, address);
-		}
-
-		private ushort Pop()
-		{
-			var address = ReadWord(SP);
-			SP += 2;
-			return address;
-		}
-
-		private void Pop(int r16)
-		{
-			SetR16(r16, ReadWord(SP), false);
-			SP += 2;
-		}
-
-		private void Call(int opcode)
-		{
-			ushort address = ReadNextWord();
-
-			// Handle unconditional CALL or test condition
-			if (opcode == 0xcd || TestCondition(opcode))
-			{
-				Push(PC);
-				PC = address;
-			}
-		}
-
-		private void Jp(int opcode)
-		{
-			ushort address = ReadNextWord();
-
-			// Handle unconditional JP or test condition
-			if (opcode == 0xc3 || TestCondition(opcode))
-			{
-				Cycles++;
-				PC = address;
-			}
-		}
-
-		private void Jr(int opcode)
-		{
-			sbyte offset = (sbyte)ReadNextByte();
-
-			// Handle unconditional JR or test condition
-			if (opcode == 0x18 || TestCondition(opcode))
-			{
-				Cycles++;
-				PC += (ushort)offset;
-			}
-		}
-
-		private void Ret(int opcode)
-		{
-			Cycles++;
-
-			var condition = opcode != 0xc9 && TestCondition(opcode);
-
-			// Handle unconditional RET or test condition
-			if (opcode == 0xc9 || condition)
-			{
-				// Add extra cycle if conditional
-				if (condition)
-				{
-					Cycles++;
-				}
-
-				PC = Pop();
-			}
-		}
-
-		private void Reti()
-		{
-			Ei();
-			Cycles++;
-			PC = Pop();
-		}
-
-		private bool TestCondition(int opcode)
-		{
-			// 0 = NZ 1 = Z 2 = NC 3 = C
-			return ((opcode >> 3) & 0x03) switch
-			{
-				0 => !zero,
-				1 => zero,
-				2 => !carry,
-				3 => carry,
-				_ => false	// Never reached
-			};
-		}
-
-		private void Ei()
-		{
-			ime = true;
-		}
-
-		private void Di()
-		{
-			ime = false;
-		}
-
-		private void Daa()
-		{
-			byte adjustment = 0;
-
-			if (carry || (A > 0x99 && !negative))
-			{
-				adjustment = 0x60;
-				carry = true;
-			}
-
-			if (halfCarry || ((A & 0x0f) > 0x09 && !negative))
-			{
-				adjustment += 0x06;
-			}
-
-			A += negative ? (byte)-adjustment : adjustment;
-
-			zero = A == 0;
-			halfCarry = false;
-		}
-
-		private void Add(byte value)
-		{
-			byte result = (byte)(A + value);
-
-			zero = result == 0;
-			negative = false;
-			halfCarry = (A & 0x0f) + (value & 0x0f) > 0x0f;
-			carry = result < A;
-
-			A = result;
-		}
-
-		private void Adc(byte value)
-		{
-			int result = (A + value + (carry ? 1 : 0));
-
-			zero = (byte)result == 0;
-			negative = false;
-			halfCarry = (A & 0x0f) + (value & 0x0f) + (carry ? 1 : 0) > 0x0f;
-			carry = result > 255;
-
-			A = (byte)result;
-		}
-
-		private void AddHl(int r16)
-		{
-			Cycles++;
-
-			ushort value = GetR16(r16);
-			ushort result = (ushort)(HL + value);
-
-			negative = false;
-			halfCarry = (HL & 0xfff) + (value & 0xfff) > 0xfff;
-			carry = result < HL;
-
-			HL = result;
-		}
-
-		private void LdHlSp(byte i8)
-		{
-			Cycles++;
-
-			zero = false;
-			negative = false;
-			halfCarry = ((SP + i8) & 0x0f) < (SP & 0x0f);
-			carry = ((SP + i8) & 0xff) < (SP & 0xff);
-
-			HL = (ushort)(SP + (sbyte)i8);
-		}
-
-		private void AddSp(byte i8)
-		{
-			Cycles++;
-			Cycles++;
-
-			zero = false;
-			negative = false;
-			halfCarry = ((SP + i8) & 0x0f) < (SP & 0x0f);
-			carry = ((SP + i8) & 0xff) < (SP & 0xff);
-
-			SP += (ushort)(sbyte)i8;
-		}
-
-		private byte Cp(byte value)
-		{
-			byte result = (byte)(A - value);
-
-			zero = result == 0;
-			negative = true;
-			halfCarry = (A & 0x0f) < (value & 0x0f);
-			carry = result > A;
-
-			return result;
-		}
-
-		private void Sub(byte value)
-		{
-			A = Cp(value);
-		}
-
-		private void Sbc(byte value)
-		{
-			int result = (A - value - (carry ? 1 : 0));
-
-			zero = (byte)result == 0;
-			negative = true;
-			halfCarry = ((A & 0x0f) - (carry ? 1 : 0) < (value & 0x0f));
-			carry = result < 0;
-
-			A = (byte)result;
-		}
-
-		private void And(byte value)
-		{
-			A &= value;
-
-			zero = A == 0;
-			negative = false;
-			halfCarry = true;
-			carry = false;
-		}
-
-		private void Or(byte value)
-		{
-			A |= value;
-
-			zero = A == 0;
-			negative = false;
-			halfCarry = false;
-			carry = false;
-		}
-
-		private void Xor(byte value)
-		{
-			A ^= value;
-
-			zero = A == 0;
-			negative = false;
-			halfCarry = false;
-			carry = false;
-		}
-
-		private void Bit(byte value, int bit)
-		{			
-			zero = (value & (1 << bit)) == 0;
-			negative = false;
-			halfCarry = true;
-		}
-
-		private byte Srl(byte value)
-		{
-			carry = (value & 0x01) != 0;
-			value >>= 1;
-			zero = value == 0;
-			negative = false;
-			halfCarry = false;
-
-			return value;
-		}
-
-		private byte Rl(byte value)
-		{
-			var cc = carry;
-
-			carry = (value & 0x80) != 0;
-			value = (byte)((value << 1) | (cc ? 1 : 0));
-
-			zero = value == 0;
-			negative = false;
-			halfCarry = false;
-
-			return value;
-		}
-
-		private byte Rr(byte value)
-		{
-			var cc = carry;
-
-			carry = (value & 1) != 0;
-			value = (byte)((value >> 1) | (cc ? (1 << 7) : 0));
-
-			zero = value == 0;
-			negative = false;
-			halfCarry = false;
-
-			return value;
-		}
-
-		private byte Rlc(byte value)
-		{
-			carry = (value & 0x80) != 0;
-			value = (byte)((value << 1) | (value >> 7));
-
-			zero = value == 0;
-			negative = false;
-			halfCarry = false;
-
-			return value;
-		}
-
-		private byte Rrc(byte value)
-		{
-			carry = (value & 0x01) != 0;
-			value = (byte)((value >> 1) | (value << 7));
-
-			zero = value == 0;
-			negative = false;
-			halfCarry = false;
-
-			return value;
-		}
-
-		private byte Sla(byte value)
-		{
-			carry = (value & 0x80) != 0;
-			value <<= 1;
-
-			zero = value == 0;
-			negative = false;
-			halfCarry = false;
-
-			return value;
-		}
-
-		private byte Sra(byte value)
-		{
-			carry = (value & 0x01) != 0;
-			value = (byte)((value >> 1) | (value & 0x80));
-
-			zero = value == 0;
-			negative = false;
-			halfCarry = false;
-
-			return value;
-		}
-
-		private byte Swap(byte value)
-		{
-			value = (byte)((value >> 4) | (value << 4));
-
-			zero = value == 0;
-			negative = false;
-			halfCarry = false;
-			carry = false;
-
-			return value;
-		}
-
-		private byte Res(byte value, int bit)
-		{
-			return (byte)(value & (~(1 << bit)));
-		}
-
-		private byte Set(byte value, int bit)
-		{
-			return (byte)(value | (1 << bit));
-		}
-
 		public void Execute()
 		{
-			InterruptHandler();
+			ProcessInterrupts();
 
 			if (isHalted)
 			{
@@ -663,6 +118,7 @@ namespace SpecBoy
 			int regId;
 			byte opcode = ReadNextByte();
 
+			// Opcode execute logic
 			switch (opcode)
 			{	
 				// NOP
@@ -1154,36 +610,619 @@ namespace SpecBoy
 			}
 		}
 
-		private void DispatchInterrupt(ushort vector)
+		private void OnCycleUpdate()
 		{
-			// 5M (20T) cycles in total
-			Push(PC);       // 3M (12T) cycles
-			PC = vector;
-			Cycles++;
-			Cycles++;
-			Di();
+			timers.Update();
+			ppu.Tick(Cycles);
 		}
 
-		public void InterruptHandler()
+		private void UpdateFlags()
 		{
-			ushort vector = 0;
+			int flags = zero ? 1 << 7 : 0;
+			flags |= negative ? 1 << 6 : 0;
+			flags |= halfCarry ? 1 << 5 : 0;
+			flags |= carry ? 1 << 4 : 0;
+
+			af.R8Low = (byte)flags;
+		}
+
+		// Can get either SP or AF depending on bool
+		private ushort GetR16(int r16, bool usesSP = true)
+		{
+			return r16 switch
+			{
+				0 => BC,
+				1 => DE,
+				2 => HL,
+				3 => usesSP ? SP : AF,
+				_ => throw new ArgumentException($"Attempt to get invalid R16 identifier. R16 was {r16}", "r16")
+			};
+		}
+
+		// Can set either SP or AF depending on bool
+		private void SetR16(int r16, ushort value, bool usesSP = true)
+		{
+			switch (r16)
+			{
+				case 0:
+					BC = value;
+					break;
+
+				case 1:
+					DE = value;
+					break;
+
+				case 2:
+					HL = value;
+					break;
+
+				case 3:
+					if (usesSP)
+					{
+						SP = value;
+					}
+					else
+					{
+						AF = value;
+					}
+
+					break;
+
+				default:
+					throw new ArgumentException($"Attempt to set invalid R16 identifier. R16 was {r16}", "r16");
+			}
+		}
+
+		private byte GetR8(int r8)
+		{
+			return r8 switch
+			{
+				0 => B,
+				1 => C,
+				2 => D,
+				3 => E,
+				4 => H,
+				5 => L,
+				6 => ReadByte(HL),
+				7 => A,
+				_ => throw new ArgumentException($"Attempt to get invalid R8 identifier. R8 was {r8}", "r8")
+			};
+		}
+
+		private void SetR8(int r8, byte value)
+		{
+			switch (r8)
+			{
+				case 0:
+					B = value;
+					break;
+
+				case 1:
+					C = value;
+					break;
+
+				case 2:
+					D = value;
+					break;
+
+				case 3:
+					E = value;
+					break;
+
+				case 4:
+					H = value;
+					break;
+
+				case 5:
+					L = value;
+					break;
+
+				case 6:
+					WriteByte(HL, value);
+					break;
+
+				case 7:
+					A = value;
+					break;
+
+				default:
+					throw new ArgumentException($"Attempt to set invalid R8 identifier. R8 was {r8}", "r8");
+			}
+		}
+
+		private byte ReadByte(int address)
+		{
+			Cycles++;
+			return mem.ReadByte(address);
+		}
+
+		private byte ReadNextByte()
+		{
+			return ReadByte(PC++);
+		}
+
+		private ushort ReadWord(int address)
+		{
+			return (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
+		}
+
+		private ushort ReadNextWord()
+		{
+			return (ushort)(ReadNextByte() | ReadNextByte() << 8);
+		}
+
+		private void WriteByte(int address, byte value)
+		{
+			Cycles++;
+			mem.WriteByte(address, value);
+		}
+
+		private void WriteWord(int address, ushort value)
+		{
+			WriteByte(address, (byte)value);
+			WriteByte(address + 1, (byte)(value >> 8));
+		}
+
+		private byte IncR8(int r8)
+		{
+			byte result = GetR8(r8);
+			result++;
+
+			zero = result == 0;
+			halfCarry = (result & 0x0f) == 0;
+			negative = false;
+
+			return result;
+		}
+
+		private byte DecR8(int r8)
+		{
+			byte result = GetR8(r8);
+			result--;
+
+			zero = result == 0;
+			halfCarry = (result & 0x0f) == 0x0f;
+			negative = true;
+
+			return result;
+		}
+
+		private ushort IncR16(int r16)
+		{
+			Cycles++;
+			return (ushort)(GetR16(r16) + 1);
+		}
+
+		private ushort DecR16(int r16)
+		{
+			Cycles++;
+			return (ushort)(GetR16(r16) - 1);
+		}
+
+		private void Push(ushort address)
+		{
+			Cycles++;
+			SP -= 2;
+			WriteWord(SP, address);
+		}
+
+		private ushort Pop()
+		{
+			var address = ReadWord(SP);
+			SP += 2;
+			return address;
+		}
+
+		private void Pop(int r16)
+		{
+			SetR16(r16, ReadWord(SP), false);
+			SP += 2;
+		}
+
+		private void Call(int opcode)
+		{
+			ushort address = ReadNextWord();
+
+			// Handle unconditional CALL or test condition
+			if (opcode == 0xcd || TestCondition(opcode))
+			{
+				Push(PC);
+				PC = address;
+			}
+		}
+
+		private void Jp(int opcode)
+		{
+			ushort address = ReadNextWord();
+
+			// Handle unconditional JP or test condition
+			if (opcode == 0xc3 || TestCondition(opcode))
+			{
+				Cycles++;
+				PC = address;
+			}
+		}
+
+		private void Jr(int opcode)
+		{
+			sbyte offset = (sbyte)ReadNextByte();
+
+			// Handle unconditional JR or test condition
+			if (opcode == 0x18 || TestCondition(opcode))
+			{
+				Cycles++;
+				PC += (ushort)offset;
+			}
+		}
+
+		private void Ret(int opcode)
+		{
+			Cycles++;
+
+			if (opcode == 0xc9)
+			{
+				PC = Pop();
+				return;
+			}
+			
+			if (TestCondition(opcode))
+			{
+				Cycles++;
+				PC = Pop();
+			}
+		}
+
+		private void Reti()
+		{
+			ime = true;
+			Cycles++;
+			PC = Pop();
+		}
+
+		private bool TestCondition(int opcode)
+		{
+			// 0 = NZ; 1 = Z; 2 = NC; 3 = C
+			return ((opcode >> 3) & 0x03) switch
+			{
+				0 => !zero,
+				1 => zero,
+				2 => !carry,
+				3 => carry,
+				_ => false	// Never reached
+			};
+		}
+
+		private void Ei()
+		{
+			ime = true;
+		}
+
+		private void Di()
+		{
+			ime = false;
+		}
+
+		private void Daa()
+		{
+			byte adjustment = 0;
+
+			if (carry || (A > 0x99 && !negative))
+			{
+				adjustment = 0x60;
+				carry = true;
+			}
+
+			if (halfCarry || ((A & 0x0f) > 0x09 && !negative))
+			{
+				adjustment += 0x06;
+			}
+
+			A += negative ? (byte)-adjustment : adjustment;
+
+			zero = A == 0;
+			halfCarry = false;
+		}
+
+		private void Add(byte value)
+		{
+			byte result = (byte)(A + value);
+
+			zero = result == 0;
+			negative = false;
+			halfCarry = (A & 0x0f) + (value & 0x0f) > 0x0f;
+			carry = result < A;
+
+			A = result;
+		}
+
+		private void Adc(byte value)
+		{
+			int result = (A + value + (carry ? 1 : 0));
+
+			zero = (byte)result == 0;
+			negative = false;
+			halfCarry = (A & 0x0f) + (value & 0x0f) + (carry ? 1 : 0) > 0x0f;
+			carry = result > 255;
+
+			A = (byte)result;
+		}
+
+		private void AddHl(int r16)
+		{
+			Cycles++;
+
+			ushort value = GetR16(r16);
+			ushort result = (ushort)(HL + value);
+
+			negative = false;
+			halfCarry = (HL & 0xfff) + (value & 0xfff) > 0xfff;
+			carry = result < HL;
+
+			HL = result;
+		}
+
+		private void LdHlSp(byte i8)
+		{
+			Cycles++;
+
+			// Cache SP to avoid many calls to getter
+			ushort cachedSP = SP;
+			ushort result = (ushort)(cachedSP + (sbyte)i8);
+
+			zero = false;
+			negative = false;
+			halfCarry = ((result) & 0x0f) < (cachedSP & 0x0f);
+			carry = ((result) & 0xff) < (cachedSP & 0xff);
+
+			HL = result;
+		}
+
+		private void AddSp(byte i8)
+		{
+			Cycles++;
+			Cycles++;
+
+			// Cache SP to avoid many calls to getter
+			ushort cachedSP = SP;
+			ushort result = (ushort)(cachedSP + (sbyte)i8);
+
+			zero = false;
+			negative = false;
+			halfCarry = ((result) & 0x0f) < (cachedSP & 0x0f);
+			carry = ((result) & 0xff) < (cachedSP & 0xff);
+
+			SP = result;
+		}
+
+		private byte Cp(byte value)
+		{
+			byte result = (byte)(A - value);
+
+			zero = result == 0;
+			negative = true;
+			halfCarry = (A & 0x0f) < (value & 0x0f);
+			carry = result > A;
+
+			return result;
+		}
+
+		private void Sub(byte value)
+		{
+			A = Cp(value);
+		}
+
+		private void Sbc(byte value)
+		{
+			int result = (A - value - (carry ? 1 : 0));
+
+			zero = (byte)result == 0;
+			negative = true;
+			halfCarry = ((A & 0x0f) - (carry ? 1 : 0) < (value & 0x0f));
+			carry = result < 0;
+
+			A = (byte)result;
+		}
+
+		private void And(byte value)
+		{
+			A &= value;
+
+			zero = A == 0;
+			negative = false;
+			halfCarry = true;
+			carry = false;
+		}
+
+		private void Or(byte value)
+		{
+			A |= value;
+
+			zero = A == 0;
+			negative = false;
+			halfCarry = false;
+			carry = false;
+		}
+
+		private void Xor(byte value)
+		{
+			A ^= value;
+
+			zero = A == 0;
+			negative = false;
+			halfCarry = false;
+			carry = false;
+		}
+
+		private void Bit(byte value, int bit)
+		{			
+			zero = (value & (1 << bit)) == 0;
+			negative = false;
+			halfCarry = true;
+		}
+
+		private byte Srl(byte value)
+		{
+			carry = (value & 0x01) != 0;
+			value >>= 1;
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
+
+			return value;
+		}
+
+		private byte Rl(byte value)
+		{
+			var cc = carry;
+
+			carry = (value & 0x80) != 0;
+			value = (byte)((value << 1) | (cc ? 1 : 0));
+
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
+
+			return value;
+		}
+
+		private byte Rr(byte value)
+		{
+			var cc = carry;
+
+			carry = (value & 1) != 0;
+			value = (byte)((value >> 1) | (cc ? (1 << 7) : 0));
+
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
+
+			return value;
+		}
+
+		private byte Rlc(byte value)
+		{
+			carry = (value & 0x80) != 0;
+			value = (byte)((value << 1) | (value >> 7));
+
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
+
+			return value;
+		}
+
+		private byte Rrc(byte value)
+		{
+			carry = (value & 0x01) != 0;
+			value = (byte)((value >> 1) | (value << 7));
+
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
+
+			return value;
+		}
+
+		private byte Sla(byte value)
+		{
+			carry = (value & 0x80) != 0;
+			value <<= 1;
+
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
+
+			return value;
+		}
+
+		private byte Sra(byte value)
+		{
+			carry = (value & 0x01) != 0;
+			value = (byte)((value >> 1) | (value & 0x80));
+
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
+
+			return value;
+		}
+
+		private byte Swap(byte value)
+		{
+			value = (byte)((value >> 4) | (value << 4));
+
+			zero = value == 0;
+			negative = false;
+			halfCarry = false;
+			carry = false;
+
+			return value;
+		}
+
+		private byte Res(byte value, int bit)
+		{
+			return (byte)(value & (~(1 << bit)));
+		}
+
+		private byte Set(byte value, int bit)
+		{
+			return (byte)(value | (1 << bit));
+		}
+
+		private void ProcessInterrupts()
+		{
+			// Default vector if no matches is 0
+			ushort IrqVector = 0;
 
 			// Check if any interrupts are pending
 			if ((mem.IE & mem.IF) != 0)
 			{
+				// Exit HALT regardless of current IME
 				isHalted = false;
 
-				// Only fire if interrupts actually enabled
+				// Only service if interrupts are actually enabled
 				if (ime)
 				{
-					if (timers.TimaIRQReq && Utility.IsBitSet(mem.IE, 2))
+					// Leaves IF unchanged if not altered below
+					int bitToClear = 8;
+
+					// 6M (24T) cycles in total (inc. fetch) to service interrupt
+					Cycles++;
+					ime = false;
+
+					// Write MSB of PC to (SP); this can effect decisions below if written to IE
+					Cycles++;
+					SP--;
+					WriteByte(SP, (byte)(PC >> 8));
+
+					// Check which interrupt to service
+					if (ppu.VBlankIrqReq && Utility.IsBitSet(mem.IE, Ppu.VBlankIeBit))
 					{
-						timers.TimaIRQReq = false;
-						Utility.ClearBit(mem.IF, 2);
-						vector = Timers.IRQVector;
+						ppu.VBlankIrqReq = false;
+						bitToClear = Ppu.VBlankIeBit;
+						IrqVector = Ppu.VBlankIrqVector;
+					}
+					else if (ppu.StatIrqReq && Utility.IsBitSet(mem.IE, Ppu.StatIeBit))
+					{
+						ppu.StatIrqReq = false;
+						bitToClear = Ppu.StatIeBit;
+						IrqVector = Ppu.StatIrqVector;
+					}
+					else if (timers.TimaIrqReq && Utility.IsBitSet(mem.IE, Timers.TimerIeBit))
+					{
+						timers.TimaIrqReq = false;
+						bitToClear = Timers.TimerIeBit;
+						IrqVector = Timers.TimerIrqVector;
 					}
 
-					DispatchInterrupt(vector);
+					// Write LSB of PC to (SP)
+					SP--;
+					WriteByte(SP, (byte)PC);
+
+					// Clear IF bit and set PC (IF remains unchanged if no matches)
+					Cycles++;
+					mem.IF = Utility.ClearBit(mem.IF, bitToClear);
+					PC = IrqVector;
 				}
 			}
 		}
