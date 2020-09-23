@@ -16,6 +16,7 @@ namespace SpecBoy
 		private bool carry;
 
 		private bool isHalted;
+		private bool haltBug;
 
 		// Registers
 		private Reg16 af;
@@ -43,6 +44,7 @@ namespace SpecBoy
 
 			cycles = 0;
 			isHalted = false;
+			haltBug = false;
 			ime = false;
 		}
 
@@ -117,6 +119,12 @@ namespace SpecBoy
 
 			int regId;
 			byte opcode = ReadNextByte();
+
+			if (haltBug)
+			{
+				haltBug = false;
+				PC--;
+			}
 
 			// Opcode execute logic
 			switch (opcode)
@@ -320,7 +328,14 @@ namespace SpecBoy
 
 				// HALT
 				case 0x76:
-					isHalted = true;
+					if (ime || (mem.IE & mem.IF & 0x1f) == 0)
+					{
+						isHalted = true;
+					}
+					else
+					{
+						haltBug = true;
+					}
 					break;
 
 				// ADD A, r8

@@ -9,6 +9,8 @@ namespace SpecBoy
 		private readonly Timers timers;
 		private readonly Ppu ppu;
 
+		private byte interruptFlag;
+
 		public Memory(Timers timers, Ppu ppu)
 		{
 			this.timers = timers;
@@ -17,6 +19,8 @@ namespace SpecBoy
 			Rom = new byte[0x8000];
 			WRam = new byte[0x2000];
 			HRam = new byte[0x80];
+
+			interruptFlag = 0xe0;
 		}
 
 		public byte[] Rom { get; set; }
@@ -34,13 +38,18 @@ namespace SpecBoy
 				var num = (byte)(ppu.VBlankIrqReq ? (1 << 0) : 0);
 				num |= (byte)(ppu.StatIrqReq ? (1 << 1) : 0);
 				num |= (byte)(timers.TimaIrqReq ? (1 << 2) : 0);
-				return num;
+
+				interruptFlag |= num;
+
+				return interruptFlag;
 			}
 			set
 			{
 				ppu.VBlankIrqReq = Utility.IsBitSet(value, 0);
 				ppu.StatIrqReq = Utility.IsBitSet(value, 1);
 				timers.TimaIrqReq = Utility.IsBitSet(value, 2);
+
+				interruptFlag = (byte)(value | 0xe0);
 			}
 		}
 
