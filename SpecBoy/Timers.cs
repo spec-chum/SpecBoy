@@ -2,9 +2,6 @@
 {
 	class Timers
 	{
-		public const ushort TimerIrqVector = 0x50;
-		public const int TimerIeBit = 2;
-
 		public ushort divCounter;
 
 		private bool lastResult = false;
@@ -15,7 +12,6 @@
 			Tima = 0;
 			Tma = 0;
 			Tac = 0xf8;
-			TimaIrqReq = false;
 			ReloadTima = false;
 		}
 
@@ -30,8 +26,6 @@
 
 		public byte Tac { get; set; }
 
-		public bool TimaIrqReq { get; set; }
-
 		public bool ReloadTima { get; set; }
 
 		public byte OldTima { get; set; }
@@ -42,7 +36,7 @@
 			{
 				ReloadTima = false;
 				Tima = Tma;
-				TimaIrqReq = true;
+				Interrupts.TimerIrqReq = true;
 			}
 
 			divCounter += 4;

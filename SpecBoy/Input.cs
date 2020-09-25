@@ -4,9 +4,6 @@ namespace SpecBoy
 {
 	class Input
 	{
-		public const int JoypadIeBit = 4;
-		public const int JoypadIrqVector = 0x60;
-
 		private readonly Window window;
 
 		private bool dpadEnabled = false;
@@ -38,8 +35,6 @@ namespace SpecBoy
 			start = 1;
 
 		}
-
-		public bool JoypadIrqReq { get; set; }
 
 		public byte Joypad
 		{

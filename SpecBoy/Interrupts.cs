@@ -1,47 +1,32 @@
-﻿//using System;
-//using System.Collections.Generic;
-//using System.Text;
+﻿using System.IO;
 
-//namespace SpecBoy
-//{
-//	class Interrupts
-//	{
-//		private Cpu cpu;
-//		private Memory mem;
-//		private Timers timers;
+namespace SpecBoy
+{
+	static class Interrupts
+	{
+		public const ushort VBlankIrqVector = 0x40;
+		public const int VBlankIeBit = 0;
 
-//		public Interrupts()
-//		{ }
+		public const ushort StatIrqVector = 0x48;
+		public const int StatIeBit = 1;
 
-//		public void SetComponents(Gameboy gameboy)
-//		{
-//			cpu = gameboy.cpu;
-//			mem = gameboy.mem;
-//			timers = gameboy.timers;
-//		}
+		public const ushort TimerIrqVector = 0x50;
+		public const int TimerIeBit = 2;
 
-//		public void InterruptHandler()
-//		{
-//			ushort vector = 0;
+		public const ushort SerialIrqVector = 0x58;
+		public const int SerialIeBit = 3;
 
-//			// Check if any interrupts are pending
-//			if ((mem.IE & mem.IF) != 0)
-//			{
-//				cpu.isHalted = false;
+		public const int JoypadIrqVector = 0x60;
+		public const int JoypadIeBit = 4;
 
-//				// Only fire if interrupts actually enabled
-//				if (cpu.ime)
-//				{
-//					if (timers.TimaIRQReq && Utility.IsBitSet(mem.IE, 2))
-//					{
-//						timers.TimaIRQReq = false;
-//						Utility.ClearBit(mem.IF, 2);
-//						vector = Timers.IRQVector;
-//					}
+		public static bool VBlankIrqReq { get; set; }
 
-//					cpu.DispatchInterrupt(vector);
-//				}
-//			}
-//		}
-//	}
-//}
+		public static bool StatIrqReq { get; set; }
+
+		public static bool SerialIrqReq { get; set; }
+
+		public static bool TimerIrqReq { get; set; }
+
+		public static bool JoypadIrqReq { get; set; }
+	}
+}

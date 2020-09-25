@@ -9,11 +9,6 @@ namespace SpecBoy
 {
 	class Ppu
 	{
-		public const ushort VBlankIrqVector = 0x40;
-		public const ushort StatIrqVector = 0x48;
-		public const int VBlankIeBit = 0;
-		public const int StatIeBit = 1;
-
 		private const int ScreenWidth = 160;
 		private const int ScreenHeight = 144;
 
@@ -80,10 +75,6 @@ namespace SpecBoy
 		public byte Obp0 { get; set; }
 
 		public byte Obp1 { get; set; }
-
-		public bool VBlankIrqReq { get; set; }
-
-		public bool StatIrqReq { get; set; }
 
 		public void Tick()
 		{
@@ -157,7 +148,7 @@ namespace SpecBoy
 
 					if (Utility.IsBitSet(Stat, 3))
 					{
-						StatIrqReq = true;
+						Interrupts.StatIrqReq = true;
 					}
 
 					break;
@@ -166,13 +157,14 @@ namespace SpecBoy
 					winY = 0;
 					RenderBuffer();
 					currentMode = Mode.VBlank;
-					VBlankIrqReq = true;
+
+					Interrupts.VBlankIrqReq = true;
 
 					Stat = (byte)((Stat & 0xfc) | 1);
 
 					if (Utility.IsBitSet(Stat, 4))
 					{
-						StatIrqReq = true;
+						Interrupts.StatIrqReq = true;
 					}
 
 					break;
@@ -184,7 +176,7 @@ namespace SpecBoy
 
 					if (Utility.IsBitSet(Stat, 5))
 					{
-						StatIrqReq = true;
+						Interrupts.StatIrqReq = true;
 					}
 
 					break;
@@ -207,7 +199,7 @@ namespace SpecBoy
 
 				if (Utility.IsBitSet(Stat, 6))
 				{
-					StatIrqReq = true;
+					Interrupts.StatIrqReq = true;
 				}
 			}
 			else

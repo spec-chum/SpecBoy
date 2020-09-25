@@ -8,7 +8,6 @@ namespace SpecBoy
 		private readonly Memory mem;
 		private readonly Timers timers;
 		private readonly Ppu ppu;
-		private readonly Input joypad;
 
 		// Flags - discrete, so we're not wasting cycles on bitwise ops
 		private bool zero;
@@ -18,6 +17,7 @@ namespace SpecBoy
 
 		private bool isHalted;
 		private bool haltBug;
+		private bool eiDelay;
 
 		// Registers
 		private Reg16 af;
@@ -30,12 +30,11 @@ namespace SpecBoy
 
 		private int cycles;
 
-		public Cpu(Memory mem, Timers timers, Ppu ppu, Input joypad)
+		public Cpu(Memory mem, Ppu ppu, Timers timers)
 		{
 			this.mem = mem;
 			this.timers = timers;
 			this.ppu = ppu;
-			this.joypad = joypad;
 
 			AF = 0x01b0;
 			BC = 0x0013;
@@ -48,6 +47,7 @@ namespace SpecBoy
 			isHalted = false;
 			haltBug = false;
 			ime = false;
+			eiDelay = false;
 		}
 
 		// Only really needed for PUSH AF and POP AF
@@ -126,6 +126,12 @@ namespace SpecBoy
 			{
 				haltBug = false;
 				PC--;
+			}
+
+			if (eiDelay)
+			{
+				ime = true;
+				eiDelay = false;
 			}
 
 			// Opcode execute logic
@@ -912,7 +918,8 @@ namespace SpecBoy
 
 		private void Ei()
 		{
-			ime = true;
+			eiDelay = true;
+			//ime = true;
 		}
 
 		private void Di()
@@ -1193,7 +1200,7 @@ namespace SpecBoy
 			ushort IrqVector = 0;
 
 			// Check if any interrupts are pending
-			if ((mem.IE & mem.IF) != 0)
+			if ((mem.IE & mem.IF & 0x1f) != 0)
 			{
 				// Exit HALT regardless of current IME
 				isHalted = false;
@@ -1214,29 +1221,35 @@ namespace SpecBoy
 					WriteByte(SP, (byte)(PC >> 8));
 
 					// Check which interrupt to service, in priority order
-					if (ppu.VBlankIrqReq && Utility.IsBitSet(mem.IE, Ppu.VBlankIeBit))
+					if (Interrupts.VBlankIrqReq && Utility.IsBitSet(mem.IE, Interrupts.VBlankIeBit))
 					{
-						ppu.VBlankIrqReq = false;
-						bitToClear = Ppu.VBlankIeBit;
-						IrqVector = Ppu.VBlankIrqVector;
+						Interrupts.VBlankIrqReq = false;
+						bitToClear = Interrupts.VBlankIeBit;
+						IrqVector = Interrupts.VBlankIrqVector;
 					}
-					else if (ppu.StatIrqReq && Utility.IsBitSet(mem.IE, Ppu.StatIeBit))
+					else if (Interrupts.StatIrqReq && Utility.IsBitSet(mem.IE, Interrupts.StatIeBit))
 					{
-						ppu.StatIrqReq = false;
-						bitToClear = Ppu.StatIeBit;
-						IrqVector = Ppu.StatIrqVector;
+						Interrupts.StatIrqReq = false;
+						bitToClear = Interrupts.StatIeBit;
+						IrqVector = Interrupts.StatIrqVector;
 					}
-					else if (timers.TimaIrqReq && Utility.IsBitSet(mem.IE, Timers.TimerIeBit))
+					else if (Interrupts.TimerIrqReq && Utility.IsBitSet(mem.IE, Interrupts.TimerIeBit))
 					{
-						timers.TimaIrqReq = false;
-						bitToClear = Timers.TimerIeBit;
-						IrqVector = Timers.TimerIrqVector;
+						Interrupts.TimerIrqReq = false;
+						bitToClear = Interrupts.TimerIeBit;
+						IrqVector = Interrupts.TimerIrqVector;
 					}
-					else if (joypad.JoypadIrqReq && Utility.IsBitSet(mem.IE, Input.JoypadIeBit))
+					else if (Interrupts.SerialIrqReq && Utility.IsBitSet(mem.IE, Interrupts.SerialIeBit))
 					{
-						joypad.JoypadIrqReq = false;
-						bitToClear = Input.JoypadIeBit;
-						IrqVector = Input.JoypadIrqVector;
+						Interrupts.SerialIrqReq = false;
+						bitToClear = Interrupts.SerialIeBit;
+						IrqVector = Interrupts.SerialIrqVector;
+					}
+					else if (Interrupts.JoypadIrqReq && Utility.IsBitSet(mem.IE, Interrupts.JoypadIeBit))
+					{
+						Interrupts.JoypadIrqReq = false;
+						bitToClear = Interrupts.JoypadIeBit;
+						IrqVector = Interrupts.JoypadIrqVector;
 					}
 
 					// Write LSB of PC to (SP)

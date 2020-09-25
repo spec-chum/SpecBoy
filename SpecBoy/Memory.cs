@@ -34,10 +34,11 @@
 			get
 			{
 				byte num;
-				num = (byte)(ppu.VBlankIrqReq ? (1 << 0) : 0);
-				num |= (byte)(ppu.StatIrqReq ? (1 << 1) : 0);
-				num |= (byte)(timers.TimaIrqReq ? (1 << 2) : 0);
-				num |= (byte)(joypad.JoypadIrqReq ? (1 << 4) : 0);
+				num  = (byte)(Interrupts.VBlankIrqReq ? (1 << 0) : 0);
+				num |= (byte)(Interrupts.StatIrqReq ? (1 << 1) : 0);
+				num |= (byte)(Interrupts.TimerIrqReq ? (1 << 2) : 0);
+				num |= (byte)(Interrupts.SerialIrqReq ? (1 << 3) : 0);
+				num |= (byte)(Interrupts.JoypadIrqReq ? (1 << 4) : 0);
 
 				interruptFlag |= num;
 
@@ -45,10 +46,11 @@
 			}
 			set
 			{
-				ppu.VBlankIrqReq = Utility.IsBitSet(value, 0);
-				ppu.StatIrqReq = Utility.IsBitSet(value, 1);
-				timers.TimaIrqReq = Utility.IsBitSet(value, 2);
-				joypad.JoypadIrqReq = Utility.IsBitSet(value, 4);
+				Interrupts.VBlankIrqReq = Utility.IsBitSet(value, 0);
+				Interrupts.StatIrqReq = Utility.IsBitSet(value, 1);
+				Interrupts.TimerIrqReq = Utility.IsBitSet(value, 2);
+				Interrupts.SerialIrqReq = Utility.IsBitSet(value, 3);
+				Interrupts.JoypadIrqReq = Utility.IsBitSet(value, 4);
 
 				interruptFlag = (byte)(value | 0xe0);
 			}
