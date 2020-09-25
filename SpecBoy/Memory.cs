@@ -1,8 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Runtime.InteropServices.WindowsRuntime;
-
-namespace SpecBoy
+﻿namespace SpecBoy
 {
 	class Memory
 	{
@@ -18,7 +14,7 @@ namespace SpecBoy
 
 			Rom = new byte[0x8000];
 			WRam = new byte[0x2000];
-			HRam = new byte[0x80];
+			HRam = new byte[0x7f];
 
 			interruptFlag = 0xe0;
 		}
@@ -66,6 +62,9 @@ namespace SpecBoy
 				// RAM and mirrors
 				var n when n >= 0xc000 && n <= 0xfdff => WRam[address & 0x1fff],
 
+				// OAM
+				var n when n >= 0xfe00 && n <= 0xfe9f => ppu.Oam[address & 0xff],
+
 				// IO Registers
 				var n when n >= 0xff00 && n <= 0xff7f => address switch
 				{
@@ -86,6 +85,8 @@ namespace SpecBoy
 					0xff44 => ppu.Ly,
 					0xff45 => ppu.Lyc,
 					0xff47 => ppu.Bgp,
+					0xff48 => ppu.Obp0,
+					0xff49 => ppu.Obp1,
 					0xff4a => ppu.Wy,
 					0xff4b => ppu.Wx,
 
@@ -109,7 +110,7 @@ namespace SpecBoy
 		{			
 			switch (address)
 			{
-				// Can't write to ROM
+				// Can't write to ROM (yet)
 				case var n when n >= 0x0000 && n <= 0x7fff:
 					break;
 
@@ -121,6 +122,11 @@ namespace SpecBoy
 				// RAM and mirrors
 				case var n when n >= 0xc000 && n <= 0xfdff:
 					WRam[address & 0x1fff] = value;
+					break;
+
+				// OAM
+				case var n when n >= 0xfe00 && n <= 0xfe9f:
+					ppu.Oam[address & 0xff] = value;
 					break;
 
 				// Timers
@@ -137,12 +143,12 @@ namespace SpecBoy
 					break;
 
 				case 0xff07:
-					timers.Tac = value;
+					timers.Tac = (byte)(value | 0xf8);
 					break;
 
 				// Serial IO - print output for testing
 				case 0xff01:
-					Console.Write((char)value);
+					//Console.Write((char)value);
 					break;
 
 				case 0xff0f:
@@ -155,7 +161,7 @@ namespace SpecBoy
 					break;
 
 				case 0xff41:
-					ppu.Stat = value;
+					ppu.Stat = (byte)(value | 0x80);
 					break;
 
 				case 0xff42:
@@ -166,16 +172,31 @@ namespace SpecBoy
 					ppu.Scx = value;
 					break;
 
-				case 0xff44:
-					ppu.Ly = value;
-					break;
-
 				case 0xff45:
 					ppu.Lyc = value;
 					break;
 
+				// OAM DMA
+				case 0xff46:
+					ushort startAddr = (ushort)(value << 8);
+
+					for (int i = 0; i < 0xa0; i++)
+					{
+						ppu.Oam[i] = ReadByte(startAddr + i);
+					}
+
+					break;
+
 				case 0xff47:
 					ppu.Bgp = value;
+					break;
+
+				case 0xff48:
+					ppu.Obp0 = value;
+					break;
+
+				case 0xff49:
+					ppu.Obp1 = value;
 					break;
 
 				case 0xff4a:

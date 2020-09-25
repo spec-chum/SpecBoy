@@ -243,6 +243,7 @@ namespace SpecBoy
 
 				// STOP
 				case 0x10:
+					isHalted = true;
 					break;
 
 				// DAA
@@ -627,8 +628,8 @@ namespace SpecBoy
 
 		private void OnCycleUpdate()
 		{
-			timers.Update();
-			ppu.Tick(Cycles);
+			timers.Tick();
+			ppu.Tick();
 		}
 
 		private void UpdateFlags()

@@ -5,7 +5,7 @@
 		public const ushort TimerIrqVector = 0x50;
 		public const int TimerIeBit = 2;
 
-		private ushort divCounter;
+		public ushort divCounter;
 
 		private bool lastResult = false;
 
@@ -14,7 +14,7 @@
 			Div = 0;
 			Tima = 0;
 			Tma = 0;
-			Tac = 0;
+			Tac = 0xf8;
 			TimaIrqReq = false;
 			ReloadTima = false;
 		}
@@ -36,7 +36,7 @@
 
 		public byte OldTima { get; set; }
 
-		public void Update()
+		public void Tick()
 		{
 			if (ReloadTima && OldTima == Tima)
 			{
@@ -49,7 +49,6 @@
 
 			var divBit = (Tac & 0x03) switch
 			{
-
 				0 => 9,
 				1 => 3,
 				2 => 5,
