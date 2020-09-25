@@ -6,7 +6,13 @@ namespace SpecBoy
 	{
 		static void Main(string[] args)
 		{
-			Gameboy gb = new Gameboy();
+			if (args.Length < 1)
+			{
+				Console.WriteLine("Usage: SpecBoy romname.gb");
+				return;
+			}
+
+			Gameboy gb = new Gameboy(args[0]);
 			gb.Run();
 		}
 	}

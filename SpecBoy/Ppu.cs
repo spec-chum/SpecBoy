@@ -18,6 +18,8 @@ namespace SpecBoy
 		private const int ScreenHeight = 144;
 
 		public readonly uint[] colours = { 0xF4FFF4, 0xC0D0C0, 0x80A080, 0x001000, 0x0000ff };
+
+		// SFML
 		private readonly RenderWindow window;
 		private readonly Texture texture;
 		private readonly SfmlSprite framebuffer;

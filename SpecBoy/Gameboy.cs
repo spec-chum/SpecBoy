@@ -14,9 +14,12 @@ namespace SpecBoy
 		public readonly Timers timers;
 		public readonly Ppu ppu;
 
+		private readonly string romName;
+
+		// SFML
 		private readonly RenderWindow window;
 
-		public Gameboy()
+		public Gameboy(string rom)
 		{
 			window = new RenderWindow(new VideoMode(160 * scale, 144 * scale), "SpecBoy", Styles.Default);
 			//window.SetFramerateLimit(60);
@@ -26,6 +29,8 @@ namespace SpecBoy
 			ppu = new Ppu(window, scale);
 			mem = new Memory(timers, ppu);
 			cpu = new Cpu(mem, timers, ppu);
+
+			romName = rom;
 		}
 
 		public void Run()
@@ -34,7 +39,7 @@ namespace SpecBoy
 
 			window.Closed += (s, e) => window.Close();
 
-			using (var rom = File.Open("dmg-acid2.gb", FileMode.Open))
+			using (var rom = File.Open(romName, FileMode.Open))
 			{
 				rom.Read(mem.Rom, 0, (int)rom.Length);
 			}
@@ -58,7 +63,6 @@ namespace SpecBoy
 				}
 
 				cpu.Execute();
-
 			}
 		}
 	}
