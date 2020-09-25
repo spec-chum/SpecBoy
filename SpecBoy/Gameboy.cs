@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data.SqlTypes;
 using System.IO;
 using SFML.Graphics;
 using SFML.Window;
@@ -13,6 +14,7 @@ namespace SpecBoy
 		public readonly Memory mem;
 		public readonly Timers timers;
 		public readonly Ppu ppu;
+		public readonly Input joypad;
 
 		private readonly string romName;
 
@@ -26,9 +28,10 @@ namespace SpecBoy
 			//window.SetVerticalSyncEnabled(true);
 
 			timers = new Timers();
+			joypad = new Input(window);
 			ppu = new Ppu(window, scale);
-			mem = new Memory(timers, ppu);
-			cpu = new Cpu(mem, timers, ppu);
+			mem = new Memory(timers, ppu, joypad);
+			cpu = new Cpu(mem, timers, ppu, joypad);
 
 			romName = rom;
 		}

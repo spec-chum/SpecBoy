@@ -2,7 +2,7 @@
 {
 	class Sprite
 	{
-		public Sprite(ushort y, ushort x, byte tileNum, byte attributes)
+		public Sprite(byte y, byte x, byte tileNum, byte attributes)
 		{
 			Y = (byte)(y - 16);
 			X = (byte)(x - 8);

@@ -199,7 +199,7 @@ namespace SpecBoy
 			}
 		}
 
-		void CompareLYC()
+		private void CompareLYC()
 		{
 			if (Ly == Lyc)
 			{
@@ -315,6 +315,7 @@ namespace SpecBoy
 
 			int spriteSize = Utility.IsBitSet(Lcdc, 2) ? 16 : 8;
 
+			// Search OAM for sprites that fit on scanline (up to 10)
 			for (int i = 0; i < 0xa0 && sprites.Count < 10; i +=4 )
 			{
 				byte spriteStartY = (byte)(Oam[i] - 16);

@@ -4,13 +4,15 @@
 	{
 		private readonly Timers timers;
 		private readonly Ppu ppu;
+		private readonly Input joypad;
 
 		private byte interruptFlag;
 
-		public Memory(Timers timers, Ppu ppu)
+		public Memory(Timers timers, Ppu ppu, Input joypad)
 		{
 			this.timers = timers;
 			this.ppu = ppu;
+			this.joypad = joypad;
 
 			Rom = new byte[0x8000];
 			WRam = new byte[0x2000];
@@ -31,9 +33,11 @@
 		{
 			get
 			{
-				var num = (byte)(ppu.VBlankIrqReq ? (1 << 0) : 0);
+				byte num;
+				num = (byte)(ppu.VBlankIrqReq ? (1 << 0) : 0);
 				num |= (byte)(ppu.StatIrqReq ? (1 << 1) : 0);
 				num |= (byte)(timers.TimaIrqReq ? (1 << 2) : 0);
+				num |= (byte)(joypad.JoypadIrqReq ? (1 << 4) : 0);
 
 				interruptFlag |= num;
 
@@ -44,6 +48,7 @@
 				ppu.VBlankIrqReq = Utility.IsBitSet(value, 0);
 				ppu.StatIrqReq = Utility.IsBitSet(value, 1);
 				timers.TimaIrqReq = Utility.IsBitSet(value, 2);
+				joypad.JoypadIrqReq = Utility.IsBitSet(value, 4);
 
 				interruptFlag = (byte)(value | 0xe0);
 			}
@@ -68,6 +73,9 @@
 				// IO Registers
 				var n when n >= 0xff00 && n <= 0xff7f => address switch
 				{
+					// JOYPAD
+					0xff00 => joypad.Joypad,
+
 					// TIMERS
 					0xff04 => timers.Div,
 					0xff05 => timers.Tima,
@@ -127,6 +135,11 @@
 				// OAM
 				case var n when n >= 0xfe00 && n <= 0xfe9f:
 					ppu.Oam[address & 0xff] = value;
+					break;
+
+				// Joypad
+				case 0xff00:
+					joypad.Joypad = value;
 					break;
 
 				// Timers

@@ -8,6 +8,7 @@ namespace SpecBoy
 		private readonly Memory mem;
 		private readonly Timers timers;
 		private readonly Ppu ppu;
+		private readonly Input joypad;
 
 		// Flags - discrete, so we're not wasting cycles on bitwise ops
 		private bool zero;
@@ -29,11 +30,12 @@ namespace SpecBoy
 
 		private int cycles;
 
-		public Cpu(Memory mem, Timers timers, Ppu ppu)
+		public Cpu(Memory mem, Timers timers, Ppu ppu, Input joypad)
 		{
 			this.mem = mem;
 			this.timers = timers;
 			this.ppu = ppu;
+			this.joypad = joypad;
 
 			AF = 0x01b0;
 			BC = 0x0013;
@@ -1211,7 +1213,7 @@ namespace SpecBoy
 					SP--;
 					WriteByte(SP, (byte)(PC >> 8));
 
-					// Check which interrupt to service
+					// Check which interrupt to service, in priority order
 					if (ppu.VBlankIrqReq && Utility.IsBitSet(mem.IE, Ppu.VBlankIeBit))
 					{
 						ppu.VBlankIrqReq = false;
@@ -1229,6 +1231,12 @@ namespace SpecBoy
 						timers.TimaIrqReq = false;
 						bitToClear = Timers.TimerIeBit;
 						IrqVector = Timers.TimerIrqVector;
+					}
+					else if (joypad.JoypadIrqReq && Utility.IsBitSet(mem.IE, Input.JoypadIeBit))
+					{
+						joypad.JoypadIrqReq = false;
+						bitToClear = Input.JoypadIeBit;
+						IrqVector = Input.JoypadIrqVector;
 					}
 
 					// Write LSB of PC to (SP)
