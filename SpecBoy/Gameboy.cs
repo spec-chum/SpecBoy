@@ -43,10 +43,11 @@ namespace SpecBoy
 			{
 				window.DispatchEvents();
 
-				if (cpu.PC == 0x486e)
-				{
-					logging = false;
-				}
+				// For debugging - stop log when certain PC reached
+				//if (cpu.PC == 0x486e)
+				//{
+				//	logging = false;
+				//}
 
 				if (logging)
 				{
