@@ -1,11 +1,17 @@
-﻿namespace SpecBoy
+﻿using System;
+using System.Text;
+
+namespace SpecBoy
 {
 	class Memory
 	{
+
 		private readonly Timers timers;
 		private readonly Ppu ppu;
 		private readonly Input joypad;
 
+		private int dmaCycles;
+		private ushort dmaSrcAddr;
 		private byte interruptFlag;
 
 		public Memory(Timers timers, Ppu ppu, Input joypad)
@@ -20,7 +26,7 @@
 
 			interruptFlag = 0xe0;
 		}
-
+		
 		public byte[] Rom { get; set; }
 
 		public byte[] WRam { get; set; }
@@ -56,8 +62,33 @@
 			}
 		}
 
-		public byte ReadByte(int address)
+		// Called from OnCycleUpdate in CPU
+		public void DoDma()
 		{
+			// Check if any DMA in progress
+			if (dmaCycles == 0)
+			{
+				return;
+			}
+
+			byte index = (byte)(160 - dmaCycles);
+
+			// Account for the 2 cycle delay (do nothing for 2 cycles)
+			if (dmaCycles <= 160)
+			{
+				ppu.Oam[index] = ReadByte(dmaSrcAddr + index, true);
+			}
+
+			dmaCycles--;
+		}
+
+		public byte ReadByte(int address, bool dma = false)
+		{
+			if (!dma && dmaCycles != 0 && address < 0xff00)
+			{
+				return 0xff;
+			}
+
 			return address switch
 			{
 				// ROM
@@ -94,6 +125,7 @@
 					0xff43 => ppu.Scx,					
 					0xff44 => ppu.Ly,
 					0xff45 => ppu.Lyc,
+					0xff46 => (byte)(dmaSrcAddr >> 8),
 					0xff47 => ppu.Bgp,
 					0xff48 => ppu.Obp0,
 					0xff49 => ppu.Obp1,
@@ -193,13 +225,10 @@
 
 				// OAM DMA
 				case 0xff46:
-					ushort startAddr = (ushort)(value << 8);
+					dmaSrcAddr = (ushort)(value << 8);
 
-					for (int i = 0; i < 0xa0; i++)
-					{
-						ppu.Oam[i] = ReadByte(startAddr + i);
-					}
-
+					// Account for delay (160 for DMA and 2 delay cycles)
+					dmaCycles = 162;
 					break;
 
 				case 0xff47:

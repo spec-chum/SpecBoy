@@ -290,7 +290,6 @@ namespace SpecBoy
 			{
 				winY++;
 			}
-
 		}
 
 		private void RenderSprites()

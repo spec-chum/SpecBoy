@@ -28,7 +28,7 @@ namespace SpecBoy
 		// Interrupt Master Enable flag
 		private bool ime;
 
-		private int cycles;
+		private long cycles;
 
 		public Cpu(Memory mem, Ppu ppu, Timers timers)
 		{
@@ -97,14 +97,14 @@ namespace SpecBoy
 
 		public ushort SP { get; private set; }
 
-		public int Cycles
+		public long Cycles
 		{
 			get => cycles;
 
 			set
 			{
-				OnCycleUpdate();
 				cycles = value;
+				OnCycleUpdate();
 			}
 		}
 
@@ -636,6 +636,10 @@ namespace SpecBoy
 
 		private void OnCycleUpdate()
 		{
+			// Check DMA
+			mem.DoDma();
+
+			// tick components
 			timers.Tick();
 			ppu.Tick();
 		}

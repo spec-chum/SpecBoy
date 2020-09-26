@@ -64,7 +64,6 @@ namespace SpecBoy
 						$" ({mem.ReadByte(cpu.PC):X2} {mem.ReadByte(cpu.PC + 1):X2} {mem.ReadByte(cpu.PC + 2):X2} {mem.ReadByte(cpu.PC + 3):X2})");
 				}
 
-
 				cpu.Execute();
 			}
 		}

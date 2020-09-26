@@ -33,7 +33,6 @@ namespace SpecBoy
 			buttonB = 1;
 			select = 1;
 			start = 1;
-
 		}
 
 		public byte Joypad
