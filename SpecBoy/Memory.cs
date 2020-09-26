@@ -82,11 +82,24 @@ namespace SpecBoy
 			dmaCycles--;
 		}
 
-		public byte ReadByte(int address, bool dma = false)
+		public byte ReadByte(int address, bool bypass = false)
 		{
-			if (!dma && dmaCycles != 0 && address < 0xff00)
+			// External bus: $0000-$7FFF, $A000-$FDFF
+			// Video ram bus: $8000-$9FFF
+
+			if (!bypass && dmaCycles != 0 && address < 0xff00)
 			{
-				return 0xff;
+				static int busType(int addr) => addr switch
+				{
+					var n when n <= 0x7fff || (n >= 0xa000 && n <= 0xfdff) => 0,
+					var n when n >= 0x8000 && n <= 0x9fff => 1,
+					_ => 2,
+				};
+
+				if (busType(address) == busType(dmaSrcAddr) || (address >= 0xfe00 && address <= 0xfe9f))
+				{
+					return 0xff;
+				}
 			}
 
 			return address switch

@@ -760,8 +760,12 @@ namespace SpecBoy
 
 		private byte ReadByte(int address)
 		{
+			//Cycles++;
+			//return mem.ReadByte(address);
+
+			byte value = mem.ReadByte(address);
 			Cycles++;
-			return mem.ReadByte(address);
+			return value;
 		}
 
 		private byte ReadNextByte()
@@ -781,8 +785,8 @@ namespace SpecBoy
 
 		private void WriteByte(int address, byte value)
 		{
-			Cycles++;
 			mem.WriteByte(address, value);
+			Cycles++;
 		}
 
 		private void WriteWord(int address, ushort value)
@@ -817,21 +821,35 @@ namespace SpecBoy
 
 		private ushort IncR16(int r16)
 		{
+			ushort value = (ushort)(GetR16(r16) + 1);
 			Cycles++;
-			return (ushort)(GetR16(r16) + 1);
+			return value;
+
+			// Cycles++;
+			//return (ushort)(GetR16(r16) + 1);
 		}
 
 		private ushort DecR16(int r16)
 		{
+			ushort value = (ushort)(GetR16(r16) - 1);
 			Cycles++;
-			return (ushort)(GetR16(r16) - 1);
+			return value;
+
+			//Cycles++;
+			//return (ushort)(GetR16(r16) - 1);
 		}
 
 		private void Push(ushort address)
 		{
+			//Cycles++;
+			//SP -= 2;
+			//WriteWord(SP, address);
+
 			Cycles++;
-			SP -= 2;
-			WriteWord(SP, address);
+			SP--;
+			WriteByte(SP, (byte)(address >> 8));
+			SP--;
+			WriteByte(SP, (byte)address);
 		}
 
 		private ushort Pop()
@@ -866,8 +884,8 @@ namespace SpecBoy
 			// Handle unconditional JP or test condition
 			if (opcode == 0xc3 || TestCondition(opcode))
 			{
-				Cycles++;
 				PC = address;
+				Cycles++;
 			}
 		}
 
@@ -878,33 +896,31 @@ namespace SpecBoy
 			// Handle unconditional JR or test condition
 			if (opcode == 0x18 || TestCondition(opcode))
 			{
-				Cycles++;
 				PC += (ushort)offset;
+				Cycles++;
 			}
 		}
 
 		private void Ret(int opcode)
 		{
-			Cycles++;
-
 			if (opcode == 0xc9)
 			{
 				PC = Pop();
-				return;
-			}
-			
-			if (TestCondition(opcode))
+			}			
+			else if (TestCondition(opcode))
 			{
 				Cycles++;
 				PC = Pop();
 			}
+
+			Cycles++;
 		}
 
 		private void Reti()
 		{
 			ime = true;
-			Cycles++;
 			PC = Pop();
+			Cycles++;
 		}
 
 		private bool TestCondition(int opcode)
@@ -978,8 +994,6 @@ namespace SpecBoy
 
 		private void AddHl(int r16)
 		{
-			Cycles++;
-
 			ushort value = GetR16(r16);
 			ushort result = (ushort)(HL + value);
 
@@ -988,12 +1002,12 @@ namespace SpecBoy
 			carry = result < HL;
 
 			HL = result;
+
+			Cycles++;
 		}
 
 		private void LdHlSp(byte i8)
 		{
-			Cycles++;
-
 			// Cache SP to avoid many calls to getter
 			ushort cachedSP = SP;
 			ushort result = (ushort)(cachedSP + (sbyte)i8);
@@ -1004,13 +1018,12 @@ namespace SpecBoy
 			carry = ((result) & 0xff) < (cachedSP & 0xff);
 
 			HL = result;
+
+			Cycles++;
 		}
 
 		private void AddSp(byte i8)
 		{
-			Cycles++;
-			Cycles++;
-
 			// Cache SP to avoid many calls to getter
 			ushort cachedSP = SP;
 			ushort result = (ushort)(cachedSP + (sbyte)i8);
@@ -1021,6 +1034,9 @@ namespace SpecBoy
 			carry = ((result) & 0xff) < (cachedSP & 0xff);
 
 			SP = result;
+
+			Cycles++;
+			Cycles++;
 		}
 
 		private byte Cp(byte value)
@@ -1220,9 +1236,9 @@ namespace SpecBoy
 					ime = false;
 
 					// Write MSB of PC to (SP); this can effect decisions below if written to IE
-					Cycles++;
 					SP--;
 					WriteByte(SP, (byte)(PC >> 8));
+					Cycles++;
 
 					// Check which interrupt to service, in priority order
 					if (Interrupts.VBlankIrqReq && Utility.IsBitSet(mem.IE, Interrupts.VBlankIeBit))
@@ -1261,9 +1277,9 @@ namespace SpecBoy
 					WriteByte(SP, (byte)PC);
 
 					// Clear IF bit and set PC (IF remains unchanged if no matches)
-					Cycles++;
 					mem.IF = Utility.ClearBit(mem.IF, bitToClear);
 					PC = IrqVector;
+					Cycles++;
 				}
 			}
 		}
