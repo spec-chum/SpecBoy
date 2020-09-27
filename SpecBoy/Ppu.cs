@@ -1,6 +1,8 @@
 ﻿using SFML.Graphics;
 using SFML.System;
+using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
@@ -12,12 +14,14 @@ namespace SpecBoy
 		private const int ScreenWidth = 160;
 		private const int ScreenHeight = 144;
 
-		public readonly uint[] colours = { 0xF4FFF4, 0xC0D0C0, 0x80A080, 0x001000, 0x0000ff };
+		public readonly uint[] colours = { 0xFFF4FFF4, 0xFFC0D0C0, 0xFF80A080, 0xFF001000, 0xFF0000ff };
 
 		// SFML
 		private readonly RenderWindow window;
 		private readonly Texture texture;
 		private readonly SfmlSprite framebuffer;
+
+		private readonly byte[] pixels;
 
 		private int currentCycle;
 		private byte winY;
@@ -27,7 +31,7 @@ namespace SpecBoy
 		{
 			VRam = new byte[0x2000];
 			Oam = new byte[0xa0];
-			Pixels = new byte[ScreenWidth * ScreenHeight * 4];
+			pixels = new byte[ScreenWidth * ScreenHeight * 4];
 
 			this.window = window;
 			texture = new Texture(ScreenWidth, ScreenHeight);
@@ -47,8 +51,6 @@ namespace SpecBoy
 			OAM,
 			LCDTransfer
 		}
-
-		public byte[] Pixels { get; }
 
 		public byte[] VRam { get; set; }
 
@@ -334,14 +336,14 @@ namespace SpecBoy
 						sprite.TileNum &= 0xfe;
 					}
 
-					int framebufferIndex = (screenY * 160 * 4) + (sprite.X * 4);
+					int framebufferIndex = (screenY * 160 + sprite.X) * 4;
 
 					for (int tilePixel = 0; tilePixel < 8; tilePixel++, framebufferIndex += 4)
 					{
 						byte pixel = (byte)(sprite.X + (7 - tilePixel));
 
-						// Lower sprite.x has priority, but ignore if pixel was transparent
-						if (minX[pixel] != 0 && minX[pixel] <= sprite.X + 100 && Pixels[framebufferIndex] != (byte)colours[0])
+						// Lower sprite.x has priority, but ignore if previous pixel was transparent
+						if (minX[pixel] != 0 && minX[pixel] <= sprite.X + 100 && pixels[framebufferIndex] != (byte)colours[0])
 						{
 							continue;
 						}
@@ -382,21 +384,19 @@ namespace SpecBoy
 			}
 			else
 			{
-				return Pixels[framebufferIndex] == (byte)colours[0];
+				return pixels[framebufferIndex] == (byte)colours[0];
 			}
 		}
 
 		private void DrawPixel(int framebufferIndex, int colour)
 		{
-			Pixels[framebufferIndex + 0] = (byte)(colours[colour] >> 0);
-			Pixels[framebufferIndex + 1] = (byte)(colours[colour] >> 8);
-			Pixels[framebufferIndex + 2] = (byte)(colours[colour] >> 16);
-			Pixels[framebufferIndex + 3] = 0xff;
+			var pixel = new Span<byte>(pixels, framebufferIndex, sizeof(int));
+			MemoryMarshal.Write(pixel, ref colours[colour]);
 		}
 
 		private void RenderBuffer()
 		{
-			texture.Update(Pixels);
+			texture.Update(pixels);
 			window.Draw(framebuffer);
 			window.Display();
 		}
