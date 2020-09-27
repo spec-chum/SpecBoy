@@ -24,8 +24,6 @@ namespace SpecBoy
 			Rom = new byte[0x8000];
 			WRam = new byte[0x2000];
 			HRam = new byte[0x7f];
-
-			interruptFlag = 0xe0;
 		}
 		
 		public byte[] Rom { get; set; }
@@ -47,7 +45,7 @@ namespace SpecBoy
 				num |= (byte)(Interrupts.SerialIrqReq ? (1 << 3) : 0);
 				num |= (byte)(Interrupts.JoypadIrqReq ? (1 << 4) : 0);
 
-				interruptFlag |= num;
+				interruptFlag |= (byte)(num | 0xe0);
 
 				return interruptFlag;
 			}
@@ -59,7 +57,7 @@ namespace SpecBoy
 				Interrupts.SerialIrqReq = Utility.IsBitSet(value, 3);
 				Interrupts.JoypadIrqReq = Utility.IsBitSet(value, 4);
 
-				interruptFlag = (byte)(value | 0xe0);
+				interruptFlag = value;
 			}
 		}
 
@@ -135,14 +133,14 @@ namespace SpecBoy
 					0xff04 => timers.Div,
 					0xff05 => timers.Tima,
 					0xff06 => timers.Tma,
-					0xff07 => timers.Tac,
+					0xff07 => (byte)(timers.Tac | 0xf8),
 
 					// IF
 					0xff0f => IF,
 
 					// PPU
 					0xff40 => ppu.Lcdc,
-					0xff41 => ppu.Stat,
+					0xff41 => (byte)(ppu.Stat | 0x80),
 					0xff42 => ppu.Scy,
 					0xff43 => ppu.Scx,					
 					0xff44 => ppu.Ly,
@@ -209,7 +207,7 @@ namespace SpecBoy
 					break;
 
 				case 0xff07:
-					timers.Tac = (byte)(value | 0xf8);
+					timers.Tac = value;
 					break;
 
 				// Serial IO - print output for testing
@@ -227,7 +225,7 @@ namespace SpecBoy
 					break;
 
 				case 0xff41:
-					ppu.Stat = (byte)(value | 0x80);
+					ppu.Stat = value;
 					break;
 
 				case 0xff42:

@@ -40,8 +40,6 @@ namespace SpecBoy
 
 			currentCycle = 0;
 			currentMode = Mode.OAM;
-
-			Stat = 0x80;
 		}
 
 		private enum Mode
