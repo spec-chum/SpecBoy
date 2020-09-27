@@ -81,15 +81,15 @@ namespace SpecBoy
 			}
 		}
 
-		public ushort BC { get => bc; private set => bc.R16 = value; }
+		public ushort BC { get => bc.R16; private set => bc.R16 = value; }
 		public byte B { get => bc.R8High; private set => bc.R8High = value; }
 		public byte C { get => bc.R8Low; private set => bc.R8Low = value; }
 
-		public ushort DE { get => de; private set => de.R16 = value; }
+		public ushort DE { get => de.R16; private set => de.R16 = value; }
 		public byte D { get => de.R8High; private set => de.R8High = value; }
 		public byte E { get => de.R8Low; private set => de.R8Low = value; }
 
-		public ushort HL { get => hl; private set => hl.R16 = value; }
+		public ushort HL { get => hl.R16; private set => hl.R16 = value; }
 		public byte H { get => hl.R8High; private set => hl.R8High = value; }
 		public byte L { get => hl.R8Low; private set => hl.R8Low = value; }
 
@@ -655,17 +655,14 @@ namespace SpecBoy
 		}
 
 		// Can get either SP or AF depending on bool
-		private ushort GetR16(int r16, bool usesSP = true)
+		private ushort GetR16(int r16, bool usesSP = true) => r16 switch
 		{
-			return r16 switch
-			{
-				0 => BC,
-				1 => DE,
-				2 => HL,
-				3 => usesSP ? SP : AF,
-				_ => throw new ArgumentException($"Attempt to get invalid R16 identifier. R16 was {r16}", "r16")
-			};
-		}
+			0 => BC,
+			1 => DE,
+			2 => HL,
+			3 => usesSP ? SP : AF,
+			_ => throw new ArgumentException($"Attempt to get invalid R16 identifier. R16 was {r16}", "r16")
+		};
 
 		// Can set either SP or AF depending on bool
 		private void SetR16(int r16, ushort value, bool usesSP = true)
@@ -701,21 +698,18 @@ namespace SpecBoy
 			}
 		}
 
-		private byte GetR8(int r8)
+		private byte GetR8(int r8) => r8 switch
 		{
-			return r8 switch
-			{
-				0 => B,
-				1 => C,
-				2 => D,
-				3 => E,
-				4 => H,
-				5 => L,
-				6 => ReadByte(HL),
-				7 => A,
-				_ => throw new ArgumentException($"Attempt to get invalid R8 identifier. R8 was {r8}", "r8")
-			};
-		}
+			0 => B,
+			1 => C,
+			2 => D,
+			3 => E,
+			4 => H,
+			5 => L,
+			6 => ReadByte(HL),
+			7 => A,
+			_ => throw new ArgumentException($"Attempt to get invalid R8 identifier. R8 was {r8}", "r8")
+		};
 
 		private void SetR8(int r8, byte value)
 		{
@@ -760,28 +754,16 @@ namespace SpecBoy
 
 		private byte ReadByte(int address)
 		{
-			//Cycles++;
-			//return mem.ReadByte(address);
-
 			byte value = mem.ReadByte(address);
 			Cycles++;
 			return value;
 		}
 
-		private byte ReadNextByte()
-		{
-			return ReadByte(PC++);
-		}
+		private byte ReadNextByte() => ReadByte(PC++);
 
-		private ushort ReadWord(int address)
-		{
-			return (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
-		}
+		private ushort ReadWord(int address) => (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
 
-		private ushort ReadNextWord()
-		{
-			return (ushort)(ReadNextByte() | ReadNextByte() << 8);
-		}
+		private ushort ReadNextWord() => (ushort)(ReadNextByte() | ReadNextByte() << 8);
 
 		private void WriteByte(int address, byte value)
 		{
@@ -824,9 +806,6 @@ namespace SpecBoy
 			ushort value = (ushort)(GetR16(r16) + 1);
 			Cycles++;
 			return value;
-
-			// Cycles++;
-			//return (ushort)(GetR16(r16) + 1);
 		}
 
 		private ushort DecR16(int r16)
@@ -834,17 +813,10 @@ namespace SpecBoy
 			ushort value = (ushort)(GetR16(r16) - 1);
 			Cycles++;
 			return value;
-
-			//Cycles++;
-			//return (ushort)(GetR16(r16) - 1);
 		}
 
 		private void Push(ushort address)
 		{
-			//Cycles++;
-			//SP -= 2;
-			//WriteWord(SP, address);
-
 			Cycles++;
 			SP--;
 			WriteByte(SP, (byte)(address >> 8));
@@ -923,23 +895,20 @@ namespace SpecBoy
 			Cycles++;
 		}
 
-		private bool TestCondition(int opcode)
-		{
+		private bool TestCondition(int opcode) =>
 			// 0 = NZ; 1 = Z; 2 = NC; 3 = C
-			return ((opcode >> 3) & 0x03) switch
+			((opcode >> 3) & 0x03) switch
 			{
 				0 => !zero,
 				1 => zero,
 				2 => !carry,
 				3 => carry,
-				_ => false	// Never reached
+				_ => false  // Never reached
 			};
-		}
 
 		private void Ei()
 		{
 			eiDelay = true;
-			//ime = true;
 		}
 
 		private void Di()
@@ -1051,10 +1020,7 @@ namespace SpecBoy
 			return result;
 		}
 
-		private void Sub(byte value)
-		{
-			A = Cp(value);
-		}
+		private void Sub(byte value) => A = Cp(value);
 
 		private void Sbc(byte value)
 		{
@@ -1204,15 +1170,9 @@ namespace SpecBoy
 			return value;
 		}
 
-		private byte Res(byte value, int bit)
-		{
-			return (byte)(value & (~(1 << bit)));
-		}
+		private byte Res(byte value, int bit) => (byte)(value & (~(1 << bit)));
 
-		private byte Set(byte value, int bit)
-		{
-			return (byte)(value | (1 << bit));
-		}
+		private byte Set(byte value, int bit) => (byte)(value | (1 << bit));
 
 		private void ProcessInterrupts()
 		{
@@ -1290,11 +1250,6 @@ namespace SpecBoy
 			[FieldOffset(0)] public ushort R16;
 			[FieldOffset(0)] public byte R8Low;
 			[FieldOffset(1)] public byte R8High;
-
-			public static implicit operator ushort(Reg16 reg)
-			{
-				return reg.R16;
-			}
 		}
 	}
 }

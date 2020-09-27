@@ -185,9 +185,6 @@ namespace SpecBoy
 					currentMode = Mode.LCDTransfer;
 					Stat = (byte)((Stat & 0xfc) | 3);
 					break;
-
-				default:
-					break;
 			}
 		}
 
@@ -208,14 +205,14 @@ namespace SpecBoy
 			}
 		}
 
-		private byte ReadByte(int address)
+		private byte ReadByteVRam(int address)
 		{
 			return VRam[address & 0x1fff];
 		}
 
-		private ushort ReadWord(int address)
+		private ushort ReadVramWord(int address)
 		{
-			return (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
+			return (ushort)(ReadByteVRam(address) | (ReadByteVRam(address + 1) << 8));
 		}
 
 		private void RenderBackground()
@@ -259,7 +256,7 @@ namespace SpecBoy
 						tilemap = bgTilemap;
 					}
 
-					byte tileIndex = ReadByte(tilemap + (ty / 8 * 32) + (tx / 8));
+					byte tileIndex = ReadByteVRam(tilemap + (ty / 8 * 32) + (tx / 8));
 
 					byte tileX = (byte)(tx & 7);
 					byte tileY = (byte)(ty & 7);
@@ -268,13 +265,13 @@ namespace SpecBoy
 					byte highByte;
 					if (tileData == 0x8000)
 					{
-						lowByte = ReadByte(tileData + (tileIndex * 16) + (tileY * 2));
-						highByte = ReadByte(tileData + (tileIndex * 16) + (tileY * 2) + 1);
+						lowByte = ReadByteVRam(tileData + (tileIndex * 16) + (tileY * 2));
+						highByte = ReadByteVRam(tileData + (tileIndex * 16) + (tileY * 2) + 1);
 					}
 					else
 					{
-						lowByte = ReadByte(0x9000 + ((sbyte)tileIndex * 16) + (tileY * 2));
-						highByte = ReadByte(0x9000 + ((sbyte)tileIndex * 16) + (tileY * 2) + 1);
+						lowByte = ReadByteVRam(0x9000 + ((sbyte)tileIndex * 16) + (tileY * 2));
+						highByte = ReadByteVRam(0x9000 + ((sbyte)tileIndex * 16) + (tileY * 2) + 1);
 					}
 
 					colour = (Utility.IsBitSet(highByte, 7 - tileX) ? 1 << 1 : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
@@ -306,7 +303,7 @@ namespace SpecBoy
 
 			int spriteSize = Utility.IsBitSet(Lcdc, 2) ? 16 : 8;
 
-			// Search OAM for sprites that fit on scanline (up to 10)
+			// Search OAM for sprites that appear on scanline (up to 10)
 			for (int i = 0; i < 0xa0 && sprites.Count < 10; i +=4 )
 			{
 				byte spriteStartY = (byte)(Oam[i] - 16);
@@ -351,8 +348,8 @@ namespace SpecBoy
 
 						byte tileX = (byte)(sprite.XFlip ? 7 - tilePixel : tilePixel);
 
-						byte lowByte = ReadByte(0x8000 + (sprite.TileNum * 16) + (tileY * 2));
-						byte highByte = ReadByte(0x8000 + (sprite.TileNum * 16) + (tileY * 2) + 1);
+						byte lowByte = ReadByteVRam(0x8000 + (sprite.TileNum * 16) + (tileY * 2));
+						byte highByte = ReadByteVRam(0x8000 + (sprite.TileNum * 16) + (tileY * 2) + 1);
 
 						// Get colour
 						int colour = (Utility.IsBitSet(highByte, 7 - tileX) ? 1 << 1 : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
@@ -365,6 +362,7 @@ namespace SpecBoy
 						//	colourID = 4;
 						//}
 
+						// Check priority and only draw pixel if visible and not transparent colour
 						if (CanSpriteBeDrawn(sprite.Priority, framebufferIndex) && sprite.X + tilePixel <= 160 && colour != 0)
 						{
 							DrawPixel(framebufferIndex, colourID);
@@ -372,7 +370,6 @@ namespace SpecBoy
 
 						minX[pixel] = sprite.X + 100;
 					}
-
 				}
 			}
 		}
@@ -404,9 +401,6 @@ namespace SpecBoy
 			window.Display();
 		}
 
-		private int GetColourFromPalette(int colour, int palette)
-		{
-			return (palette >> (colour << 1)) & 3;
-		}
+		private int GetColourFromPalette(int colour, int palette) => (palette >> (colour << 1)) & 3;
 	}
 }

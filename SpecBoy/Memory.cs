@@ -12,6 +12,7 @@ namespace SpecBoy
 
 		private int dmaCycles;
 		private ushort dmaSrcAddr;
+		private byte dmaLastByteWritten;
 		private byte interruptFlag;
 
 		public Memory(Timers timers, Ppu ppu, Input joypad)
@@ -76,7 +77,8 @@ namespace SpecBoy
 			// Account for the 2 cycle delay (do nothing for 2 cycles)
 			if (dmaCycles <= 160)
 			{
-				ppu.Oam[index] = ReadByte(dmaSrcAddr + index, true);
+				dmaLastByteWritten = ReadByte(dmaSrcAddr + index, true);
+				ppu.Oam[index] = dmaLastByteWritten;
 			}
 
 			dmaCycles--;
@@ -89,17 +91,25 @@ namespace SpecBoy
 
 			if (!bypass && dmaCycles != 0 && address < 0xff00)
 			{
+				// Test if in OAM
+				if (address >= 0xfe00)
+				{
+					return 0xff;
+				}
+
+				// Test if same bus
+				if (busType(address) == busType(dmaSrcAddr))
+				{
+					Console.WriteLine(dmaLastByteWritten);
+					return dmaLastByteWritten;
+				}
+
 				static int busType(int addr) => addr switch
 				{
 					var n when n <= 0x7fff || (n >= 0xa000 && n <= 0xfdff) => 0,
 					var n when n >= 0x8000 && n <= 0x9fff => 1,
 					_ => 2,
 				};
-
-				if (busType(address) == busType(dmaSrcAddr) || (address >= 0xfe00 && address <= 0xfe9f))
-				{
-					return 0xff;
-				}
 			}
 
 			return address switch
