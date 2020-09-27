@@ -100,7 +100,6 @@ namespace SpecBoy
 				// Test if same bus
 				if (busType(address) == busType(dmaSrcAddr))
 				{
-					Console.WriteLine(dmaLastByteWritten);
 					return dmaLastByteWritten;
 				}
 
@@ -166,10 +165,7 @@ namespace SpecBoy
 			};
 		}
 
-		public ushort ReadWord(int address)
-		{
-			return (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
-		}
+		public ushort ReadWord(int address) => (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
 
 		public void WriteByte(int address, byte value)
 		{			
