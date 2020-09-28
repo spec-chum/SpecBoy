@@ -70,11 +70,10 @@ namespace SpecBoy
 				return;
 			}
 
-			byte index = (byte)(160 - dmaCycles);
-
 			// Account for the 2 cycle delay (do nothing for 2 cycles)
 			if (dmaCycles <= 160)
 			{
+				byte index = (byte)(160 - dmaCycles);
 				dmaLastByteWritten = ReadByte(dmaSrcAddr + index, true);
 				ppu.Oam[index] = dmaLastByteWritten;
 			}
@@ -89,8 +88,8 @@ namespace SpecBoy
 
 			if (!bypass && dmaCycles != 0 && address < 0xff00)
 			{
-				// Test if in OAM
-				if (address >= 0xfe00)
+				// Block OAM only while DMA writing bytes
+				if (dmaCycles <= 160 && address >= 0xfe00)
 				{
 					return 0xff;
 				}
@@ -242,9 +241,14 @@ namespace SpecBoy
 
 				// OAM DMA
 				case 0xff46:
-					dmaSrcAddr = (ushort)(value << 8);
+					// Handle restart - ignore request until previous DMA actually starts
+					if (dmaCycles >= 160)
+					{
+						break;
+					}
 
 					// Account for delay (160 for DMA and 2 delay cycles)
+					dmaSrcAddr = (ushort)(value << 8);					
 					dmaCycles = 162;
 					break;
 
