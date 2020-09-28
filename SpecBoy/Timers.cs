@@ -7,15 +7,6 @@
 		private bool lastResult;
 		private bool reloadTima;
 
-		public Timers()
-		{
-			Div = 0;
-			Tima = 0;
-			Tma = 0;
-			Tac = 0;
-			BusConflict = false;
-		}
-
 		// Registers
 
 		// Writing to Div always sets it to 0

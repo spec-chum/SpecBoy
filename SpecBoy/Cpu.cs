@@ -28,6 +28,7 @@ namespace SpecBoy
 		// Interrupt Master Enable flag
 		private bool ime;
 
+		// Cycle counter
 		private long cycles;
 
 		public Cpu(Memory mem, Ppu ppu, Timers timers)
@@ -42,12 +43,6 @@ namespace SpecBoy
 			HL = 0x014d;
 			PC = 0x0100;
 			SP = 0xfffe;
-
-			cycles = 0;
-			isHalted = false;
-			haltBug = false;
-			ime = false;
-			eiDelay = false;
 		}
 
 		// Only really needed for PUSH AF and POP AF

@@ -38,7 +38,6 @@ namespace SpecBoy
 			framebuffer = new SfmlSprite(texture);
 			framebuffer.Scale = new Vector2f(scale, scale);
 
-			currentCycle = 0;
 			currentMode = Mode.OAM;
 		}
 
