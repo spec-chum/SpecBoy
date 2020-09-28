@@ -2,17 +2,18 @@
 {
 	class Timers
 	{
-		public ushort divCounter;
-
-		private bool lastResult = false;
+		private ushort divCounter;
+		private byte oldTima;
+		private bool lastResult;
+		private bool reloadTima;
 
 		public Timers()
 		{
 			Div = 0;
 			Tima = 0;
 			Tma = 0;
-			Tac = 0xf8;
-			ReloadTima = false;
+			Tac = 0;
+			BusConflict = false;
 		}
 
 		// Registers
@@ -26,17 +27,23 @@
 
 		public byte Tac { get; set; }
 
-		public bool ReloadTima { get; set; }
-
-		public byte OldTima { get; set; }
+		public bool BusConflict { get; set; }
 
 		public void Tick()
 		{
-			if (ReloadTima && OldTima == Tima)
+			BusConflict = false;
+
+			if (reloadTima)
 			{
-				ReloadTima = false;
-				Tima = Tma;
-				Interrupts.TimerIrqReq = true;
+				reloadTima = false;
+				BusConflict = true;
+
+				// Check Tima hasn't changed since last cycle which could cancel interrupt
+				if (oldTima == Tima)
+				{
+					Tima = Tma;
+					Interrupts.TimerIrqReq = true;
+				}
 			}
 
 			divCounter += 4;
@@ -51,17 +58,18 @@
 
 			bool result = ((Tac & (1 << 2)) != 0) & ((divCounter & (1 << divBit)) != 0);
 
+			// Detect falling edge
 			if (lastResult && !result)
 			{
 				Tima++;
 
 				if (Tima == 0)
 				{
-					ReloadTima = true;
+					reloadTima = true;
 				}
 			}
 
-			OldTima = Tima;
+			oldTima = Tima;
 			lastResult = result;
 		}
 	}
