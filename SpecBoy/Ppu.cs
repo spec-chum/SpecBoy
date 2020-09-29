@@ -315,7 +315,7 @@ namespace SpecBoy
 			}
 
 			// Cache of sprite.x values to prioritise sprites
-			int[] minX = new int[160];
+			int[] minX = new int[168];
 
 			foreach (var sprite in sprites)
 			{

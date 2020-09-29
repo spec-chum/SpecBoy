@@ -14,25 +14,28 @@ namespace SpecBoy
 		public readonly Timers timers;
 		public readonly Ppu ppu;
 		public readonly Input joypad;
+		public readonly Cartridge cartridge;
 
 		private readonly string romName;
 
 		// SFML
 		private readonly RenderWindow window;
 
-		public Gameboy(string rom)
+		public Gameboy(string romName)
 		{
 			window = new RenderWindow(new VideoMode(160 * scale, 144 * scale), "SpecBoy", Styles.Default);
-			//window.SetFramerateLimit(60);
-			//window.SetVerticalSyncEnabled(true);
+			window.SetFramerateLimit(0);
+			//window.SetVerticalSyncEnabled(false);
+			
+			this.romName = romName;
 
 			timers = new Timers();
 			joypad = new Input(window);
 			ppu = new Ppu(window, scale);
-			mem = new Memory(timers, ppu, joypad);
+			cartridge = new Cartridge();
+			cartridge.Load(this.romName);
+			mem = new Memory(timers, ppu, joypad, cartridge);
 			cpu = new Cpu(mem, ppu, timers);
-
-			romName = rom;
 		}
 
 		public void Run()
@@ -41,10 +44,10 @@ namespace SpecBoy
 
 			window.Closed += (s, e) => window.Close();
 
-			using (var rom = File.Open(romName, FileMode.Open))
-			{
-				rom.Read(mem.Rom, 0, (int)rom.Length);
-			}
+			//using (var rom = File.Open(romName, FileMode.Open))
+			//{
+			//	rom.Read(mem.Rom, 0, (int)rom.Length);
+			//}			
 
 			while (window.IsOpen)
 			{
@@ -56,13 +59,13 @@ namespace SpecBoy
 				//	logging = false;
 				//}
 
-				if (logging)
-				{
-					Console.WriteLine($"A: {cpu.A:X2} F: {cpu.F:X2}" +
-						$" B: {cpu.B:X2} C: {cpu.C:X2} D: {cpu.D:X2} E: {cpu.E:X2} H: {cpu.H:X2} L: {cpu.L:X2}" +
-						$" SP: {cpu.SP:X4} PC: 00:{cpu.PC:X4}" +
-						$" ({mem.ReadByte(cpu.PC):X2} {mem.ReadByte(cpu.PC + 1):X2} {mem.ReadByte(cpu.PC + 2):X2} {mem.ReadByte(cpu.PC + 3):X2})");
-				}
+				//if (logging)
+				//{
+				//	Console.WriteLine($"A: {cpu.A:X2} F: {cpu.F:X2}" +
+				//		$" B: {cpu.B:X2} C: {cpu.C:X2} D: {cpu.D:X2} E: {cpu.E:X2} H: {cpu.H:X2} L: {cpu.L:X2}" +
+				//		$" SP: {cpu.SP:X4} PC: 00:{cpu.PC:X4}" +
+				//		$" ({mem.ReadByte(cpu.PC):X2} {mem.ReadByte(cpu.PC + 1):X2} {mem.ReadByte(cpu.PC + 2):X2} {mem.ReadByte(cpu.PC + 3):X2})");
+				//}
 
 				cpu.Execute();
 			}
