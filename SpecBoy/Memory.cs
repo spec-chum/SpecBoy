@@ -197,10 +197,10 @@ namespace SpecBoy
 					break;
 
 				case 0xff05:
-					if (timers.BusConflict)
-					{
-						break;
-					}
+					//if (timers.BusConflict)
+					//{
+					//	break;
+					//}
 
 					timers.Tima = value;
 					break;
@@ -208,10 +208,10 @@ namespace SpecBoy
 				case 0xff06:
 					timers.Tma = value;
 
-					if (timers.BusConflict)
-					{
-						timers.Tima = timers.Tma;
-					}
+					//if (timers.BusConflict)
+					//{
+					//	timers.Tima = timers.Tma;
+					//}
 					break;
 
 				case 0xff07:
