@@ -327,7 +327,7 @@ namespace SpecBoy
 			foreach (var sprite in sprites)
 			{
 				// Is any of sprite actually visible?
-				if (sprite.X > 160)
+				if (sprite.X >= 160)
 				{
 					continue;
 				}
@@ -376,8 +376,8 @@ namespace SpecBoy
 					int pal = sprite.PalNum ? Obp1 : Obp0;
 					int colourID = GetColourFromPalette(colour, pal);
 
-					// Check priority and only draw pixel if visible and not transparent colour
-					if (CanDrawSprite(sprite.Priority, index) && currentPixel <= 160 && colour != 0)
+					// Check priority and only draw pixel if not transparent colour
+					if (CanDrawSprite(sprite.Priority, index) && colour != 0)
 					{
 						DrawPixel(index, colourID);
 						minX[currentPixel] = sprite.X + 100;
