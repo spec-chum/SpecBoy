@@ -8,25 +8,24 @@ namespace SpecBoy
 		private readonly Timers timers;
 		private readonly Ppu ppu;
 		private readonly Input joypad;
+		private readonly Cartridge cartridge;
 
 		private int dmaCycles;
 		private ushort dmaSrcAddr;
 		private byte dmaLastByteWritten;
 		private byte interruptFlag;
 
-		public Memory(Timers timers, Ppu ppu, Input joypad)
+		public Memory(Timers timers, Ppu ppu, Input joypad, Cartridge cartridge)
 		{
 			this.timers = timers;
 			this.ppu = ppu;
 			this.joypad = joypad;
+			this.cartridge = cartridge;
 
-			Rom = new byte[0x8000];
 			WRam = new byte[0x2000];
 			HRam = new byte[0x7f];
 		}
 		
-		public byte[] Rom { get; set; }
-
 		public byte[] WRam { get; set; }
 
 		public byte[] HRam { get; set; }
@@ -110,10 +109,13 @@ namespace SpecBoy
 			return address switch
 			{
 				// ROM
-				var n when n >= 0x0000 && n <= 0x7fff => Rom[address],
+				var n when n >= 0x0000 && n <= 0x7fff => cartridge.ReadByte(address),
 
 				// VRAM
 				var n when n >= 0x8000 && n <= 0x9fff => ppu.VRam[address & 0x1fff],
+
+				// External RAM
+				var n when n >= 0xa000 && n <= 0xbfff => cartridge.ReadByte(address),
 
 				// RAM and mirrors
 				var n when n >= 0xc000 && n <= 0xfdff => WRam[address & 0x1fff],
@@ -167,13 +169,19 @@ namespace SpecBoy
 		{			
 			switch (address)
 			{
-				// Can't write to ROM (yet)
+				// ROM
 				case var n when n >= 0x0000 && n <= 0x7fff:
+					cartridge.WriteByte(address, value);
 					break;
 
 				// VRAM
 				case var n when n >= 0x8000 && n <= 0x9fff:
 					ppu.VRam[address & 0x1fff] = value;
+					break;
+
+				// External RAM
+				case var n when n >= 0xa000 && n <= 0xbfff:
+					cartridge.WriteByte(address, value);
 					break;
 
 				// RAM and mirrors

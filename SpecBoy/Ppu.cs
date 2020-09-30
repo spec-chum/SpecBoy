@@ -305,8 +305,8 @@ namespace SpecBoy
 			// Search OAM for sprites that appear on scanline (up to 10)
 			for (int i = 0; i < 0xa0 && sprites.Count < 10; i +=4 )
 			{
-				byte spriteStartY = (byte)(Oam[i] - 16);
-				byte spriteEndY = (byte)(spriteStartY + spriteSize);
+				short spriteStartY = (short)(Oam[i] - 16);
+				short spriteEndY = (short)(spriteStartY + spriteSize);
 
 				if (spriteStartY <= screenY && screenY < spriteEndY)
 				{
@@ -314,66 +314,79 @@ namespace SpecBoy
 				}
 			}
 
+			// Just return if there are no sprites to draw
+			if (sprites.Count == 0)
+			{
+				return;
+			}
+
 			// Cache of sprite.x values to prioritise sprites
 			int[] minX = new int[160];
 
+			int framebufferIndex = screenY * 160 * 4;
 			foreach (var sprite in sprites)
 			{
-				// Sprite visible?
-				if (sprite.X >= 0 && sprite.X <= 160)
+				// Is any of sprite actually visible?
+				if (sprite.X >= 160)
 				{
-					byte tileY;
-					if (spriteSize == 8)
+					continue;
+				}
+
+				byte tileY;
+				if (spriteSize == 8)
+				{
+					tileY = (byte)(sprite.YFlip ? 7 - (screenY - sprite.Y) : (screenY - sprite.Y));
+				}
+				else
+				{
+					tileY = (byte)(sprite.YFlip ? 15 - (screenY - sprite.Y) : (screenY - sprite.Y));
+					sprite.TileNum &= 0xfe;
+				}
+
+				byte lowByte = ReadByteVRam(0x8000 + (sprite.TileNum * 16) + (tileY * 2));
+				byte highByte = ReadByteVRam(0x8000 + (sprite.TileNum * 16) + (tileY * 2) + 1);
+
+				for (int tilePixel = 0; tilePixel < 8; tilePixel++)
+				{
+					short currentPixel = (short)(sprite.X + tilePixel);
+
+					if (currentPixel < 0)
 					{
-						tileY = (byte)(sprite.YFlip ? 7 - (screenY - sprite.Y) : (screenY - sprite.Y));
+						continue;
 					}
-					else
+
+					if (currentPixel >= 160)
 					{
-						tileY = (byte)(sprite.YFlip ? 15 - (screenY - sprite.Y) : (screenY - sprite.Y));
-						sprite.TileNum &= 0xfe;
+						break;
 					}
 
-					int framebufferIndex = (screenY * 160 + sprite.X) * 4;
+					// Cache current pixel pos in framebuffer
+					int index = framebufferIndex + (currentPixel * 4);
 
-					for (int tilePixel = 0; tilePixel < 8; tilePixel++, framebufferIndex += 4)
+					// Lower sprite.x has priority, but ignore if previous pixel was transparent
+					if (minX[currentPixel] != 0 && minX[currentPixel] <= sprite.X + 100 && pixels[index] != (byte)colours[0])
 					{
-						byte pixel = (byte)(sprite.X + (7 - tilePixel));
+						continue;
+					}
 
-						// Lower sprite.x has priority, but ignore if previous pixel was transparent
-						if (minX[pixel] != 0 && minX[pixel] <= sprite.X + 100 && pixels[framebufferIndex] != (byte)colours[0])
-						{
-							continue;
-						}
+					byte tileX = (byte)(sprite.XFlip ? 7 - tilePixel : tilePixel);
 
-						byte tileX = (byte)(sprite.XFlip ? 7 - tilePixel : tilePixel);
+					// Get colour
+					int colour = (Utility.IsBitSet(highByte, 7 - tileX) ? 1 << 1 : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
+					int pal = sprite.PalNum ? Obp1 : Obp0;
+					int colourID = GetColourFromPalette(colour, pal);
 
-						byte lowByte = ReadByteVRam(0x8000 + (sprite.TileNum * 16) + (tileY * 2));
-						byte highByte = ReadByteVRam(0x8000 + (sprite.TileNum * 16) + (tileY * 2) + 1);
-
-						// Get colour
-						int colour = (Utility.IsBitSet(highByte, 7 - tileX) ? 1 << 1 : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
-						int pal = sprite.PalNum ? Obp1 : Obp0;
-						int colourID = GetColourFromPalette(colour, pal);
-
-						// Set 16 pixel sprites to red to assist debugging
-						//if (spriteSize == 16)
-						//{
-						//	colourID = 4;
-						//}
-
-						// Check priority and only draw pixel if visible and not transparent colour
-						if (CanSpriteBeDrawn(sprite.Priority, framebufferIndex) && sprite.X + tilePixel <= 160 && colour != 0)
-						{
-							DrawPixel(framebufferIndex, colourID);
-						}
-
-						minX[pixel] = sprite.X + 100;
+					// Check priority and only draw pixel if not transparent colour
+					if (CanDrawSprite(sprite.Priority, index) && colour != 0)
+					{
+						DrawPixel(index, colourID);
+						minX[currentPixel] = sprite.X + 100;
 					}
 				}
 			}
 		}
 
-		private bool CanSpriteBeDrawn(bool priority, int framebufferIndex)
+		private bool CanDrawSprite(bool priority, int framebufferIndex)
 		{
 			if (!priority)
 			{

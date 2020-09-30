@@ -61,6 +61,8 @@ namespace SpecBoy
 
 		private void OnKeyPressed(object sender, KeyEventArgs e)
 		{
+			bool fireInterrupt = true;
+
 			switch (e.Code)
 			{
 				case Keyboard.Key.Down:
@@ -94,8 +96,11 @@ namespace SpecBoy
 					break;
 
 				default:
+					fireInterrupt = false;
 					break;
 			}
+					
+			Interrupts.JoypadIrqReq = fireInterrupt;
 		}
 
 		private void OnKeyReleased(object sender, KeyEventArgs e)

@@ -4,8 +4,8 @@
 	{
 		public Sprite(byte y, byte x, byte tileNum, byte attributes)
 		{
-			Y = (byte)(y - 16);
-			X = (byte)(x - 8);
+			Y = (short)(y - 16);
+			X = (short)(x - 8);
 			TileNum = tileNum;
 
 			Priority = Utility.IsBitSet(attributes, 7);
@@ -14,9 +14,9 @@
 			PalNum = Utility.IsBitSet(attributes, 4);
 		}
 
-		public byte Y { get; set; }
+		public short Y { get; set; }
 
-		public byte X { get; set; }
+		public short X { get; set; }
 
 		public byte TileNum { get; set; }
 

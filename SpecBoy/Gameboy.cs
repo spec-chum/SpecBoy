@@ -14,25 +14,27 @@ namespace SpecBoy
 		public readonly Timers timers;
 		public readonly Ppu ppu;
 		public readonly Input joypad;
+		public readonly Cartridge cartridge;
 
 		private readonly string romName;
 
 		// SFML
 		private readonly RenderWindow window;
 
-		public Gameboy(string rom)
+		public Gameboy(string romName)
 		{
 			window = new RenderWindow(new VideoMode(160 * scale, 144 * scale), "SpecBoy", Styles.Default);
 			//window.SetFramerateLimit(60);
-			//window.SetVerticalSyncEnabled(true);
+			//window.SetVerticalSyncEnabled(false);
+			
+			this.romName = romName;
 
 			timers = new Timers();
 			joypad = new Input(window);
 			ppu = new Ppu(window, scale);
-			mem = new Memory(timers, ppu, joypad);
+			cartridge = new Cartridge(romName);
+			mem = new Memory(timers, ppu, joypad, cartridge);
 			cpu = new Cpu(mem, ppu, timers);
-
-			romName = rom;
 		}
 
 		public void Run()
@@ -40,11 +42,6 @@ namespace SpecBoy
 			bool logging = false;
 
 			window.Closed += (s, e) => window.Close();
-
-			using (var rom = File.Open(romName, FileMode.Open))
-			{
-				rom.Read(mem.Rom, 0, (int)rom.Length);
-			}
 
 			while (window.IsOpen)
 			{
