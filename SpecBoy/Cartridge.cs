@@ -60,7 +60,7 @@ namespace SpecBoy
 				var n when n >= 0x0000 && n <= 0x3fff => rom[address],
 
 				// ROM Bank n
-				var n when n >= 0x4000 && n <= 0x7fff => romBank[address & 0x3fff],
+				var n when n >= 0x4000 && n <= 0x7fff => rom[RomBank + (address & 0x3fff)],
 
 				// Cartridge RAM
 				var n when n >= 0xa000 && n <= 0xbfff => ram[RamBank + (address & 0x1fff)],
@@ -73,16 +73,19 @@ namespace SpecBoy
 		{
 			switch (address)
 			{
-				// ROM Bank N
+				// ROM Bank n
 				case var n when n >= 0x2000 && n <= 0x3fff:
 					RomBank = value & 0x7f;
 
 					if (RomBank == 0)
 					{
-						RomBank = 1;
+						RomBank = 0x4000;
+					}
+					else
+					{ 
+						RomBank *= 0x4000;
 					}
 
-					BankSwitch(RomBank);
 					break;
 
 				// RAM bank
@@ -100,11 +103,6 @@ namespace SpecBoy
 			}
 		}
 
-		private void BankSwitch(int bank)
-		{
-			Array.Copy(rom, 0x4000 * bank, romBank, 0, 0x4000);
-		}
-
 		public void Load(string romName)
 		{
 			rom = File.ReadAllBytes(romName);
@@ -116,12 +114,10 @@ namespace SpecBoy
 
 			Console.WriteLine();
 
-			numBanks = 32768 << rom[0x0148];
-			Console.WriteLine($"ROM size = {32768 << rom[0x0148]}");
+			numBanks = 0x8000 << rom[0x0148];
+			Console.WriteLine($"ROM size = {0x20 << rom[0x0148]}K");
 
-			var cartType = (CartType)rom[0x147];
-
-			switch (cartType)
+			switch ((CartType)rom[0x147])
 			{
 				case CartType.RomOnly:
 					Console.WriteLine("ROM Only");
