@@ -22,14 +22,10 @@ namespace SpecBoy
 			this.joypad = joypad;
 			this.cartridge = cartridge;
 
-			//Rom = new byte[0x8000];
-			Rom = cartridge.rom;
 			WRam = new byte[0x2000];
 			HRam = new byte[0x7f];
 		}
 		
-		public byte[] Rom { get; set; }
-
 		public byte[] WRam { get; set; }
 
 		public byte[] HRam { get; set; }
@@ -113,7 +109,6 @@ namespace SpecBoy
 			return address switch
 			{
 				// ROM
-				//var n when n >= 0x0000 && n <= 0x7fff => Rom[address],
 				var n when n >= 0x0000 && n <= 0x7fff => cartridge.ReadByte(address),
 
 				// VRAM

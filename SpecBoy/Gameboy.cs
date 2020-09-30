@@ -24,7 +24,7 @@ namespace SpecBoy
 		public Gameboy(string romName)
 		{
 			window = new RenderWindow(new VideoMode(160 * scale, 144 * scale), "SpecBoy", Styles.Default);
-			window.SetFramerateLimit(0);
+			//window.SetFramerateLimit(60);
 			//window.SetVerticalSyncEnabled(false);
 			
 			this.romName = romName;
@@ -32,8 +32,7 @@ namespace SpecBoy
 			timers = new Timers();
 			joypad = new Input(window);
 			ppu = new Ppu(window, scale);
-			cartridge = new Cartridge();
-			cartridge.Load(this.romName);
+			cartridge = new Cartridge(romName);
 			mem = new Memory(timers, ppu, joypad, cartridge);
 			cpu = new Cpu(mem, ppu, timers);
 		}
