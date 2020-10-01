@@ -13,7 +13,6 @@ namespace SpecBoy
 		private int dmaCycles;
 		private ushort dmaSrcAddr;
 		private byte dmaLastByteWritten;
-		private byte interruptFlag;
 
 		public Memory(Timers timers, Ppu ppu, Input joypad, Cartridge cartridge)
 		{
@@ -29,35 +28,6 @@ namespace SpecBoy
 		public byte[] WRam { get; set; }
 
 		public byte[] HRam { get; set; }
-
-		public byte IE { get; set; }
-
-		public byte IF
-		{
-			get
-			{
-				byte num;
-				num  = (byte)(Interrupts.VBlankIrqReq ? (1 << 0) : 0);
-				num |= (byte)(Interrupts.StatIrqReq ? (1 << 1) : 0);
-				num |= (byte)(Interrupts.TimerIrqReq ? (1 << 2) : 0);
-				num |= (byte)(Interrupts.SerialIrqReq ? (1 << 3) : 0);
-				num |= (byte)(Interrupts.JoypadIrqReq ? (1 << 4) : 0);
-
-				interruptFlag |= (byte)(num | 0xe0);
-
-				return interruptFlag;
-			}
-			set
-			{
-				Interrupts.VBlankIrqReq = Utility.IsBitSet(value, 0);
-				Interrupts.StatIrqReq = Utility.IsBitSet(value, 1);
-				Interrupts.TimerIrqReq = Utility.IsBitSet(value, 2);
-				Interrupts.SerialIrqReq = Utility.IsBitSet(value, 3);
-				Interrupts.JoypadIrqReq = Utility.IsBitSet(value, 4);
-
-				interruptFlag = value;
-			}
-		}
 
 		// Called from OnCycleUpdate in CPU
 		public void DoDma()
@@ -136,7 +106,7 @@ namespace SpecBoy
 					0xff07 => (byte)(timers.Tac | 0xf8),
 
 					// IF
-					0xff0f => IF,
+					0xff0f => Interrupts.IF,
 
 					// PPU
 					0xff40 => ppu.Lcdc,
@@ -157,7 +127,7 @@ namespace SpecBoy
 
 				var n when n >= 0xff80 && n <= 0xfffe => HRam[address & 0x7f],
 
-				0xffff => IE,
+				0xffff => Interrupts.IE,
 
 				_ => 0xff,
 			};
@@ -205,21 +175,11 @@ namespace SpecBoy
 					break;
 
 				case 0xff05:
-					//if (timers.BusConflict)
-					//{
-					//	break;
-					//}
-
 					timers.Tima = value;
 					break;
 
 				case 0xff06:
 					timers.Tma = value;
-
-					//if (timers.BusConflict)
-					//{
-					//	timers.Tima = timers.Tma;
-					//}
 					break;
 
 				case 0xff07:
@@ -232,7 +192,7 @@ namespace SpecBoy
 					break;
 
 				case 0xff0f:
-					IF = value;
+					Interrupts.IF = value;
 					break;
 
 				// PPU
@@ -294,7 +254,7 @@ namespace SpecBoy
 					break;
 
 				case 0xffff:
-					IE = value;
+					Interrupts.IE = value;
 					break;
 
 				default:

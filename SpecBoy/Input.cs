@@ -61,7 +61,7 @@ namespace SpecBoy
 
 		private void OnKeyPressed(object sender, KeyEventArgs e)
 		{
-			bool fireInterrupt = true;
+			bool fireInterrupt = false;
 
 			switch (e.Code)
 			{

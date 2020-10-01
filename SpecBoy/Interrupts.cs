@@ -17,10 +17,143 @@
 		public const int JoypadIrqVector = 0x60;
 		public const int JoypadIeBit = 4;
 
-		public static bool VBlankIrqReq;
-		public static bool StatIrqReq;
-		public static bool SerialIrqReq;
-		public static bool TimerIrqReq;
-		public static bool JoypadIrqReq;
+		private static bool vBlankIrqReq;
+		private static bool statIrqReq;
+		private static bool serialIrqReq;
+		private static bool timerIrqReq;
+		private static bool joypadIrqReq;
+
+		private static byte interruptFlag;
+
+		public static byte IE { get; set; }
+
+		public static byte IF
+		{
+			get
+			{
+				//byte num;
+				//num = (byte)(VBlankIrqReq ? (1 << 0) : 0);
+				//num |= (byte)(StatIrqReq ? (1 << 1) : 0);
+				//num |= (byte)(TimerIrqReq ? (1 << 2) : 0);
+				//num |= (byte)(SerialIrqReq ? (1 << 3) : 0);
+				//num |= (byte)(JoypadIrqReq ? (1 << 4) : 0);
+
+				//interruptFlag |= (byte)(num | 0xe0);
+
+				//return interruptFlag;
+
+				return (byte)(interruptFlag | 0xe0);
+			}
+			set
+			{
+				VBlankIrqReq = Utility.IsBitSet(value, 0);
+				StatIrqReq = Utility.IsBitSet(value, 1);
+				TimerIrqReq = Utility.IsBitSet(value, 2);
+				SerialIrqReq = Utility.IsBitSet(value, 3);
+				JoypadIrqReq = Utility.IsBitSet(value, 4);
+
+				interruptFlag = value;
+			}
+		}
+
+		public static bool VBlankIrqReq
+		{
+			get
+			{
+				return vBlankIrqReq;
+			}
+			set
+			{
+				if (value)
+				{
+					interruptFlag |= 1;
+				}
+				else
+				{
+					interruptFlag &= 0xff ^ 1;
+				}
+				vBlankIrqReq = value;
+			}
+		}
+
+		public static bool StatIrqReq
+		{
+			get
+			{
+				return statIrqReq;
+			}
+			set
+			{
+				if (value)
+				{
+					interruptFlag |= 1 << 1;
+				}
+				else
+				{
+					interruptFlag &= 0xff ^ (1 << 1);
+				}
+				statIrqReq = value;
+			}
+		}
+
+		public static bool SerialIrqReq
+		{
+			get
+			{
+				return serialIrqReq;
+			}
+			set
+			{
+				if (value)
+				{
+					interruptFlag |= 1 << 2;
+				}
+				else
+				{
+					interruptFlag &= 0xff ^ (1 << 2);
+				}
+				serialIrqReq = value;
+			}
+		}
+
+		public static bool TimerIrqReq
+		{
+			get
+			{
+				return timerIrqReq;
+			}
+			set
+			{
+				if (value)
+				{
+					interruptFlag |= 1 << 3;
+				}
+				else
+				{
+					interruptFlag &= 0xff ^ (1 << 3);
+				}
+				timerIrqReq = value;
+			}
+		}
+
+		public static bool JoypadIrqReq
+		{
+			get
+			{
+				return joypadIrqReq;
+			}
+			set
+			{
+				if (value)
+				{
+					interruptFlag |= 1 << 4;
+				}
+				else
+				{
+					interruptFlag &= 0xff ^ (1 << 4);
+				}
+				joypadIrqReq = value;
+			}
+		}
 	}
 }

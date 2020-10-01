@@ -332,7 +332,7 @@ namespace SpecBoy
 
 				// HALT
 				case 0x76:
-					if (ime || (mem.IE & mem.IF & 0x1f) == 0)
+					if (ime || (Interrupts.IE & Interrupts.IF & 0x1f) == 0)
 					{
 						isHalted = true;
 					}
@@ -483,6 +483,9 @@ namespace SpecBoy
 				// LD (FF00 + C), A
 				case 0xe2:
 					WriteByte(0xff00 + C, A);
+					break;
+
+				case 0xe4:
 					break;
 
 				// AND A, u8
@@ -1177,7 +1180,7 @@ namespace SpecBoy
 			ushort IrqVector = 0;
 
 			// Check if any interrupts are pending
-			if ((mem.IE & mem.IF & 0x1f) != 0)
+			if ((Interrupts.IE & Interrupts.IF & 0x1f) != 0)
 			{
 				// Exit HALT regardless of current IME
 				isHalted = false;
@@ -1198,31 +1201,31 @@ namespace SpecBoy
 					Cycles++;
 
 					// Check which interrupt to service, in priority order
-					if (Interrupts.VBlankIrqReq && Utility.IsBitSet(mem.IE, Interrupts.VBlankIeBit))
+					if (Interrupts.VBlankIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.VBlankIeBit))
 					{
 						Interrupts.VBlankIrqReq = false;
 						bitToClear = Interrupts.VBlankIeBit;
 						IrqVector = Interrupts.VBlankIrqVector;
 					}
-					else if (Interrupts.StatIrqReq && Utility.IsBitSet(mem.IE, Interrupts.StatIeBit))
+					else if (Interrupts.StatIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.StatIeBit))
 					{
 						Interrupts.StatIrqReq = false;
 						bitToClear = Interrupts.StatIeBit;
 						IrqVector = Interrupts.StatIrqVector;
 					}
-					else if (Interrupts.TimerIrqReq && Utility.IsBitSet(mem.IE, Interrupts.TimerIeBit))
+					else if (Interrupts.TimerIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.TimerIeBit))
 					{
 						Interrupts.TimerIrqReq = false;
 						bitToClear = Interrupts.TimerIeBit;
 						IrqVector = Interrupts.TimerIrqVector;
 					}
-					else if (Interrupts.SerialIrqReq && Utility.IsBitSet(mem.IE, Interrupts.SerialIeBit))
+					else if (Interrupts.SerialIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.SerialIeBit))
 					{
 						Interrupts.SerialIrqReq = false;
 						bitToClear = Interrupts.SerialIeBit;
 						IrqVector = Interrupts.SerialIrqVector;
 					}
-					else if (Interrupts.JoypadIrqReq && Utility.IsBitSet(mem.IE, Interrupts.JoypadIeBit))
+					else if (Interrupts.JoypadIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.JoypadIeBit))
 					{
 						Interrupts.JoypadIrqReq = false;
 						bitToClear = Interrupts.JoypadIeBit;
@@ -1234,7 +1237,7 @@ namespace SpecBoy
 					WriteByte(SP, (byte)PC);
 
 					// Clear IF bit and set PC (IF remains unchanged if no matches)
-					mem.IF = Utility.ClearBit(mem.IF, bitToClear);
+					Interrupts.IF = Utility.ClearBit(Interrupts.IF, bitToClear);
 					PC = IrqVector;
 					Cycles++;
 				}

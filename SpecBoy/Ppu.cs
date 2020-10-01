@@ -286,8 +286,6 @@ namespace SpecBoy
 				scanlineBuffer[x] = GetColourFromPalette(colour, Bgp);
 			}
 
-			//RenderScanline(framebufferIndex);
-
 			// Only update window Y pos if window was drawn
 			if (windowDrawn)
 			{
@@ -397,12 +395,6 @@ namespace SpecBoy
 			}
 
 		}
-
-		//private void DrawPixel(int framebufferIndex, int colour)
-		//{
-		//	var pixel = new Span<byte>(pixels, framebufferIndex, sizeof(int));
-		//	MemoryMarshal.Write(pixel, ref colours[colour]);
-		//}
 
 		private void RenderBuffer()
 		{
