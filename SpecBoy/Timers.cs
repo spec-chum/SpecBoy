@@ -3,29 +3,59 @@
 	class Timers
 	{
 		private ushort divCounter;
-		private byte oldTima;
 		private bool lastResult;
 		private bool reloadTima;
+		private bool busConflict;
 
+		// Registers
 		private byte tima;
 		private byte tma;
 		private byte tac;
 
-		// Registers
+		public byte Div
+		{
+			get => (byte)((divCounter >> 8) & 0xff);
 
-		// Writing to Div always sets it to 0
-		public byte Div { get => (byte)((divCounter >> 8) & 0xff); set => divCounter = 0; }
+			set
+			{
+				// Writing to Div always sets it to 0
+				divCounter = 0;
+
+				// Can't have falling edge if last result was 0
+				if (!lastResult)
+				{
+					return;
+				}
+
+				// If timer enabled we have a falling edge
+				if ((tac & (1 << 2)) != 0)
+				{
+					tima++;
+
+					if (tima == 0)
+					{
+						reloadTima = true;
+					}
+				}
+
+				lastResult = false;
+			}
+		}
 
 		public byte Tima
 		{
 			get => tima;
 			set
 			{
-				if (!BusConflict)
+				// Block write if TIMA is being reloaded
+				if (busConflict)
 				{
-					tima = value;
-					reloadTima = false;
+					return;
 				}
+				
+				// Writing to TIMA can cancel IRQ request, do that here
+				tima = value;
+				reloadTima = false;
 			}
 		}
 
@@ -36,7 +66,8 @@
 			{
 				tma = value;
 
-				if (BusConflict)
+				// TIMA also updated if it's being reloaded when TMA written to
+				if (busConflict)
 				{
 					tima = tma;
 				}
@@ -48,31 +79,17 @@
 			get => tac; 
 			set
 			{
-				var speed = (tac & 0x03) switch
-				{
-					0 => 1024,
-					1 => 16,
-					2 => 64,
-					_ => 256,
-				};
+				tac = value;
 
-				if (((tac & (1 << 2)) != 0) && (value & 1 << 2) == 0)
+				// Can't have falling edge if last result was 0
+				if (!lastResult)
 				{
-					if ((divCounter & (speed >> 1)) != 0)
-					{
-						System.Console.WriteLine(divCounter & (speed >> 1));
-						tima++;
-
-						if (tima == 0)
-						{
-							reloadTima = true;
-						}
-					}
+					return;
 				}
 
-				if (((divCounter & (speed >> 1)) !=0) && ((divCounter & (speed >> 1)) == 0))
+				// If timer now disabled we have a falling edge
+				if ((tac & (1 << 2)) == 0)
 				{
-					System.Console.WriteLine("In 2");
 					tima++;
 
 					if (tima == 0)
@@ -81,20 +98,18 @@
 					}
 				}
 
-				tac = value;
+				lastResult = false;
 			}
 		}
 
-		public bool BusConflict { get; set; }
-
 		public void Tick()
 		{
-			BusConflict = false;
+			busConflict = false;
 
 			if (reloadTima)
 			{
 				reloadTima = false;
-				BusConflict = true;
+				busConflict = true;
 
 				tima = tma;
 				Interrupts.TimerIrqReq = true;
@@ -115,22 +130,14 @@
 			// Detect falling edge
 			if (lastResult && !result)
 			{
-				if (divCounter != 0 && (divBit >> 1 != 0))
-				{
-					System.Console.WriteLine($"Spurious timer inc on tick {divCounter - 4}, tima: {tima}");
-				}
-
 				tima++;
 
 				if (tima == 0)
 				{
-					System.Console.WriteLine($"Overflow triggered");
-
 					reloadTima = true;
 				}
 			}
 
-			oldTima = tima;
 			lastResult = result;
 		}
 	}
