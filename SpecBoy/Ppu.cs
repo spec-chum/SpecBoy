@@ -260,18 +260,18 @@ namespace SpecBoy
 					byte tileX = (byte)(tx & 7);
 					byte tileY = (byte)(ty & 7);
 
-					byte lowByte;
-					byte highByte;
+					ushort tileLocation;
 					if (tileData == 0x8000)
 					{
-						lowByte = ReadByteVRam(tileData + (tileIndex * 16) + (tileY * 2));
-						highByte = ReadByteVRam(tileData + (tileIndex * 16) + (tileY * 2) + 1);
+						tileLocation = (ushort)(tileData + (tileIndex * 16) + (tileY * 2));
 					}
 					else
 					{
-						lowByte = ReadByteVRam(0x9000 + ((sbyte)tileIndex * 16) + (tileY * 2));
-						highByte = ReadByteVRam(0x9000 + ((sbyte)tileIndex * 16) + (tileY * 2) + 1);
+						tileLocation = (ushort)(tileData + 0x0800 + ((sbyte)tileIndex * 16) + (tileY * 2));
 					}
+
+					byte lowByte = ReadByteVRam(tileLocation);
+					byte highByte = ReadByteVRam(tileLocation + 1);
 
 					colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
 					colour = GetColourFromPalette(colour, Bgp);
@@ -374,12 +374,11 @@ namespace SpecBoy
 					// Get colour
 					int colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
 					int pal = sprite.PalNum ? Obp1 : Obp0;
-					int colourID = GetColourFromPalette(colour, pal);
 
 					// Check priority and only draw pixel if not transparent colour
 					if (CanDrawSprite(sprite.Priority, index) && colour != 0)
 					{
-						DrawPixel(index, colourID);
+						DrawPixel(index, GetColourFromPalette(colour, pal));
 						minX[currentPixel] = sprite.X + 100;
 					}
 				}
