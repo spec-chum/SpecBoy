@@ -3,6 +3,7 @@ using SFML.System;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
@@ -22,6 +23,7 @@ namespace SpecBoy
 		private readonly SfmlSprite framebuffer;
 
 		private readonly byte[] pixels;
+		private readonly int[] pixelBuffer;
 
 		private int currentCycle;
 		private byte winY;
@@ -32,6 +34,7 @@ namespace SpecBoy
 			VRam = new byte[0x2000];
 			Oam = new byte[0xa0];
 			pixels = new byte[ScreenWidth * ScreenHeight * 4];
+			pixelBuffer = new int[160];
 
 			this.window = window;
 			texture = new Texture(ScreenWidth, ScreenHeight);
@@ -226,8 +229,9 @@ namespace SpecBoy
 			bool windowDrawn = false;
 			bool canRenderWindow = Wy <= Ly && Utility.IsBitSet(Lcdc, 5);
 
-			for (int x = 0; x < 160; x++, framebufferIndex += 4)
+			for (int x = 0; x < 160; x++)
 			{
+				// Colour is 0 is BG Priority bit not set
 				if (Utility.IsBitSet(Lcdc, 0))
 				{
 					ushort tilemap;
@@ -274,18 +278,29 @@ namespace SpecBoy
 					byte highByte = ReadByteVRam(tileLocation + 1);
 
 					colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
-					colour = GetColourFromPalette(colour, Bgp);
 				}
 
-				// Draw pixel to buffer
-				DrawPixel(framebufferIndex, colour);
+				pixelBuffer[x] = colour;
 			}
+
+			RenderScanline(framebufferIndex);
 
 			// Only update window Y pos if window was drawn
 			if (windowDrawn)
 			{
 				winY++;
 			}
+		}
+
+		private void RenderScanline(int framebufferIndex)
+		{
+			var scanline = MemoryMarshal.Cast<byte, uint>(new Span<byte>(pixels, framebufferIndex, sizeof(uint) * 160));
+
+			for (int i = 0; i < 160; i++)
+			{
+				scanline[i] = colours[GetColourFromPalette(pixelBuffer[i], Bgp)];
+			}
+
 		}
 
 		private void RenderSprites()
