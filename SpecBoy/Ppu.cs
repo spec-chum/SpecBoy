@@ -3,7 +3,6 @@ using SFML.System;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
@@ -15,7 +14,8 @@ namespace SpecBoy
 		private const int ScreenWidth = 160;
 		private const int ScreenHeight = 144;
 
-		public readonly uint[] colours = { 0xFFF4FFF4, 0xFFC0D0C0, 0xFF80A080, 0xFF001000, 0xFF0000ff };
+		//public readonly uint[] colours = { 0xfff4fff4, 0xffc0d0c0, 0xff80a080, 0xff001000, 0xff0000ff };
+		public readonly uint[] colours = { 0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff };
 
 		// SFML
 		private readonly RenderWindow window;
@@ -23,7 +23,7 @@ namespace SpecBoy
 		private readonly SfmlSprite framebuffer;
 
 		private readonly byte[] pixels;
-		private readonly int[] pixelBuffer;
+		private readonly int[] scanlineBuffer;
 
 		private int currentCycle;
 		private byte winY;
@@ -34,7 +34,7 @@ namespace SpecBoy
 			VRam = new byte[0x2000];
 			Oam = new byte[0xa0];
 			pixels = new byte[ScreenWidth * ScreenHeight * 4];
-			pixelBuffer = new int[160];
+			scanlineBuffer = new int[160];
 
 			this.window = window;
 			texture = new Texture(ScreenWidth, ScreenHeight);
@@ -142,8 +142,12 @@ namespace SpecBoy
 			switch (mode)
 			{
 				case Mode.HBlank:
-					RenderBackground();
-					RenderSprites();
+					int framebufferIndex = Ly * 160 * 4;
+
+					RenderBackground(framebufferIndex);
+					RenderSprites(framebufferIndex);
+					RenderScanline(framebufferIndex);
+
 					currentMode = Mode.HBlank;
 
 					Stat = (byte)(Stat & 0xfc);
@@ -217,9 +221,8 @@ namespace SpecBoy
 			return (ushort)(ReadByteVRam(address) | (ReadByteVRam(address + 1) << 8));
 		}
 
-		private void RenderBackground()
+		private void RenderBackground(int framebufferIndex)
 		{
-			int framebufferIndex = Ly * 160 * 4;
 			int colour = 0;
 			ushort tileData = (ushort)(Utility.IsBitSet(Lcdc, 4) ? 0x8000 : 0x8800);
 			ushort bgTilemap = (ushort)(Utility.IsBitSet(Lcdc, 3) ? 0x9c00 : 0x9800);
@@ -280,10 +283,10 @@ namespace SpecBoy
 					colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
 				}
 
-				pixelBuffer[x] = colour;
+				scanlineBuffer[x] = GetColourFromPalette(colour, Bgp);
 			}
 
-			RenderScanline(framebufferIndex);
+			//RenderScanline(framebufferIndex);
 
 			// Only update window Y pos if window was drawn
 			if (windowDrawn)
@@ -291,19 +294,7 @@ namespace SpecBoy
 				winY++;
 			}
 		}
-
-		private void RenderScanline(int framebufferIndex)
-		{
-			var scanline = MemoryMarshal.Cast<byte, uint>(new Span<byte>(pixels, framebufferIndex, sizeof(uint) * 160));
-
-			for (int i = 0; i < 160; i++)
-			{
-				scanline[i] = colours[GetColourFromPalette(pixelBuffer[i], Bgp)];
-			}
-
-		}
-
-		private void RenderSprites()
+		private void RenderSprites(int framebufferIndex)
 		{
 			// Just return if sprites not enabled
 			if (!Utility.IsBitSet(Lcdc, 1))
@@ -338,7 +329,6 @@ namespace SpecBoy
 			// Cache of sprite.x values to prioritise sprites
 			int[] minX = new int[160];
 
-			int framebufferIndex = screenY * 160 * 4;
 			foreach (var sprite in sprites)
 			{
 				// Is any of sprite actually visible?
@@ -375,11 +365,8 @@ namespace SpecBoy
 						break;
 					}
 
-					// Cache current pixel pos in framebuffer
-					int index = framebufferIndex + (currentPixel * 4);
-
 					// Lower sprite.x has priority, but ignore if previous pixel was transparent
-					if (minX[currentPixel] != 0 && minX[currentPixel] <= sprite.X + 100 && pixels[index] != (byte)colours[0])
+					if (minX[currentPixel] != 0 && minX[currentPixel] <= sprite.X + 100 && scanlineBuffer[currentPixel] != 0)
 					{
 						continue;
 					}
@@ -391,25 +378,24 @@ namespace SpecBoy
 					int pal = sprite.PalNum ? Obp1 : Obp0;
 
 					// Check priority and only draw pixel if not transparent colour
-					if (CanDrawSprite(sprite.Priority, index) && colour != 0)
+					if ((!sprite.Priority || scanlineBuffer[currentPixel] == 0) && colour != 0)
 					{
-						DrawPixel(index, GetColourFromPalette(colour, pal));
+						scanlineBuffer[currentPixel] = GetColourFromPalette(colour, pal);
 						minX[currentPixel] = sprite.X + 100;
 					}
 				}
 			}
 		}
 
-		private bool CanDrawSprite(bool priority, int framebufferIndex)
+		private void RenderScanline(int framebufferIndex)
 		{
-			if (!priority)
+			var scanline = MemoryMarshal.Cast<byte, uint>(new Span<byte>(pixels, framebufferIndex, sizeof(uint) * 160));
+
+			for (int i = 0; i < 160; i++)
 			{
-				return true;
+				scanline[i] = colours[scanlineBuffer[i]];
 			}
-			else
-			{
-				return pixels[framebufferIndex] == (byte)colours[0];
-			}
+
 		}
 
 		private void DrawPixel(int framebufferIndex, int colour)
