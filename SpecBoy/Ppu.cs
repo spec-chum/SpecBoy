@@ -17,6 +17,8 @@ namespace SpecBoy
 		//public readonly uint[] colours = { 0xfff4fff4, 0xffc0d0c0, 0xff80a080, 0xff001000, 0xff0000ff };
 		public readonly uint[] colours = { 0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff };
 
+		public bool HitVSync;
+
 		// SFML
 		private readonly RenderWindow window;
 		private readonly Texture texture;
@@ -143,9 +145,6 @@ namespace SpecBoy
 			{
 				case Mode.HBlank:
 					int framebufferIndex = Ly * 160 * 4;
-
-					RenderBackground();
-					RenderSprites();
 					RenderScanline(framebufferIndex);
 
 					currentMode = Mode.HBlank;
@@ -160,8 +159,11 @@ namespace SpecBoy
 					break;
 
 				case Mode.VBlank:
+					HitVSync = true;
+
 					winY = 0;
 					RenderBuffer();
+
 					currentMode = Mode.VBlank;
 
 					Interrupts.VBlankIrqReq = true;
@@ -292,6 +294,7 @@ namespace SpecBoy
 				winY++;
 			}
 		}
+
 		private void RenderSprites()
 		{
 			// Just return if sprites not enabled
@@ -387,20 +390,22 @@ namespace SpecBoy
 
 		private void RenderScanline(int framebufferIndex)
 		{
+			RenderBackground();
+			RenderSprites();
+
 			var scanline = MemoryMarshal.Cast<byte, uint>(new Span<byte>(pixels, framebufferIndex, sizeof(uint) * 160));
 
 			for (int i = 0; i < 160; i++)
 			{
 				scanline[i] = colours[scanlineBuffer[i]];
 			}
-
 		}
 
 		private void RenderBuffer()
 		{
 			texture.Update(pixels);
 			window.Draw(framebuffer);
-			window.Display();
+			//window.Display();
 		}
 
 		private int GetColourFromPalette(int colour, int palette) => (palette >> (colour << 1)) & 3;

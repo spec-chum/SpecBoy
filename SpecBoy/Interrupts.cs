@@ -31,26 +31,15 @@
 		{
 			get
 			{
-				//byte num;
-				//num = (byte)(VBlankIrqReq ? (1 << 0) : 0);
-				//num |= (byte)(StatIrqReq ? (1 << 1) : 0);
-				//num |= (byte)(TimerIrqReq ? (1 << 2) : 0);
-				//num |= (byte)(SerialIrqReq ? (1 << 3) : 0);
-				//num |= (byte)(JoypadIrqReq ? (1 << 4) : 0);
-
-				//interruptFlag |= (byte)(num | 0xe0);
-
-				//return interruptFlag;
-
 				return (byte)(interruptFlag | 0xe0);
 			}
 			set
 			{
-				VBlankIrqReq = Utility.IsBitSet(value, 0);
-				StatIrqReq = Utility.IsBitSet(value, 1);
-				TimerIrqReq = Utility.IsBitSet(value, 2);
-				SerialIrqReq = Utility.IsBitSet(value, 3);
-				JoypadIrqReq = Utility.IsBitSet(value, 4);
+				vBlankIrqReq = Utility.IsBitSet(value, 0);
+				statIrqReq = Utility.IsBitSet(value, 1);
+				timerIrqReq = Utility.IsBitSet(value, 2);
+				serialIrqReq = Utility.IsBitSet(value, 3);
+				joypadIrqReq = Utility.IsBitSet(value, 4);
 
 				interruptFlag = value;
 			}

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 using SFML.Graphics;
 using SFML.Window;
 
@@ -42,6 +43,8 @@ namespace SpecBoy
 			long prevCycles = 0;
 			bool logging = false;
 
+			long previousVSync = 0;
+
 			window.Closed += (s, e) => window.Close();
 
 			while (window.IsOpen)
@@ -51,21 +54,26 @@ namespace SpecBoy
 
 				window.DispatchEvents();
 
-				while (cyclesThisFrame < 17556)
+				while (!ppu.HitVSync)
 				{
 					if (logging)
 					{
 						Console.WriteLine($"A: {cpu.A:X2} F: {cpu.F:X2}" +
 							$" B: {cpu.B:X2} C: {cpu.C:X2} D: {cpu.D:X2} E: {cpu.E:X2} H: {cpu.H:X2} L: {cpu.L:X2}" +
 							$" SP: {cpu.SP:X4} PC: 00:{cpu.PC:X4}" +
-							$" ({mem.ReadByte(cpu.PC):X2} {mem.ReadByte(cpu.PC + 1):X2}" +
-							$" {mem.ReadByte(cpu.PC + 2, true):X2} {mem.ReadByte(cpu.PC + 3):X2})");
+							$" ({mem.ReadByte(cpu.PC, true):X2} {mem.ReadByte(cpu.PC + 1, true):X2}" +
+							$" {mem.ReadByte(cpu.PC + 2, true):X2} {mem.ReadByte(cpu.PC + 3, true):X2})");
 					}
 
 					currentCycles = cpu.Execute();
 					cyclesThisFrame += currentCycles - prevCycles;
 					prevCycles = currentCycles;
 				}
+
+				previousVSync = cpu.Cycles;
+
+				window.Display();
+				ppu.HitVSync = false;
 			}
 		}
 	}
