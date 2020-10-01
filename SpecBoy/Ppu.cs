@@ -144,8 +144,8 @@ namespace SpecBoy
 				case Mode.HBlank:
 					int framebufferIndex = Ly * 160 * 4;
 
-					RenderBackground(framebufferIndex);
-					RenderSprites(framebufferIndex);
+					RenderBackground();
+					RenderSprites();
 					RenderScanline(framebufferIndex);
 
 					currentMode = Mode.HBlank;
@@ -221,7 +221,7 @@ namespace SpecBoy
 			return (ushort)(ReadByteVRam(address) | (ReadByteVRam(address + 1) << 8));
 		}
 
-		private void RenderBackground(int framebufferIndex)
+		private void RenderBackground()
 		{
 			int colour = 0;
 			ushort tileData = (ushort)(Utility.IsBitSet(Lcdc, 4) ? 0x8000 : 0x8800);
@@ -294,7 +294,7 @@ namespace SpecBoy
 				winY++;
 			}
 		}
-		private void RenderSprites(int framebufferIndex)
+		private void RenderSprites()
 		{
 			// Just return if sprites not enabled
 			if (!Utility.IsBitSet(Lcdc, 1))
@@ -398,11 +398,11 @@ namespace SpecBoy
 
 		}
 
-		private void DrawPixel(int framebufferIndex, int colour)
-		{
-			var pixel = new Span<byte>(pixels, framebufferIndex, sizeof(int));
-			MemoryMarshal.Write(pixel, ref colours[colour]);
-		}
+		//private void DrawPixel(int framebufferIndex, int colour)
+		//{
+		//	var pixel = new Span<byte>(pixels, framebufferIndex, sizeof(int));
+		//	MemoryMarshal.Write(pixel, ref colours[colour]);
+		//}
 
 		private void RenderBuffer()
 		{

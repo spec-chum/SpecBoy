@@ -103,7 +103,7 @@ namespace SpecBoy
 			}
 		}
 
-		public void Execute()
+		public long Execute()
 		{
 			ProcessInterrupts();
 
@@ -111,7 +111,7 @@ namespace SpecBoy
 			{
 				// Emulate NOP, so increase cycles
 				Cycles++;
-				return;
+				return cycles;
 			}
 
 			int regId;
@@ -559,6 +559,8 @@ namespace SpecBoy
 				default:
 					throw new InvalidOperationException($"Unimplemented instruction {opcode:X2} at PC: {PC:X4}");
 			}
+
+			return cycles;
 		}
 
 		private void DecodeCB()
