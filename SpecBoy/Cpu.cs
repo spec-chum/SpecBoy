@@ -641,10 +641,10 @@ namespace SpecBoy
 
 		private void UpdateFlags()
 		{
-			int flags = zero ? 1 << 7 : 0;
-			flags |= negative ? 1 << 6 : 0;
-			flags |= halfCarry ? 1 << 5 : 0;
-			flags |= carry ? 1 << 4 : 0;
+			int flags = zero ? (1 << 7) : 0;
+			flags |= negative ? (1 << 6) : 0;
+			flags |= halfCarry ? (1 << 5) : 0;
+			flags |= carry ? (1 << 4) : 0;
 
 			af.R8Low = (byte)flags;
 		}

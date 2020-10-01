@@ -273,7 +273,7 @@ namespace SpecBoy
 						highByte = ReadByteVRam(0x9000 + ((sbyte)tileIndex * 16) + (tileY * 2) + 1);
 					}
 
-					colour = (Utility.IsBitSet(highByte, 7 - tileX) ? 1 << 1 : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
+					colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
 					colour = GetColourFromPalette(colour, Bgp);
 				}
 
@@ -372,7 +372,7 @@ namespace SpecBoy
 					byte tileX = (byte)(sprite.XFlip ? 7 - tilePixel : tilePixel);
 
 					// Get colour
-					int colour = (Utility.IsBitSet(highByte, 7 - tileX) ? 1 << 1 : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
+					int colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
 					int pal = sprite.PalNum ? Obp1 : Obp0;
 					int colourID = GetColourFromPalette(colour, pal);
 

@@ -17,14 +17,10 @@
 		public const int JoypadIrqVector = 0x60;
 		public const int JoypadIeBit = 4;
 
-		public static bool VBlankIrqReq { get; set; }
-
-		public static bool StatIrqReq { get; set; }
-
-		public static bool SerialIrqReq { get; set; }
-
-		public static bool TimerIrqReq { get; set; }
-
-		public static bool JoypadIrqReq { get; set; }
+		public static bool VBlankIrqReq;
+		public static bool StatIrqReq;
+		public static bool SerialIrqReq;
+		public static bool TimerIrqReq;
+		public static bool JoypadIrqReq;
 	}
 }

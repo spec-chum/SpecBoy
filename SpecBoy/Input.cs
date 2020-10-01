@@ -39,7 +39,7 @@ namespace SpecBoy
 		{
 			get
 			{
-				byte value = (byte)(0xc0 | (!buttonsEnabled ? 1 << 5 : 0) | (!dpadEnabled ? 1 << 4 : 0));
+				byte value = (byte)(0xc0 | (!buttonsEnabled ? (1 << 5) : 0) | (!dpadEnabled ? (1 << 4) : 0));
 
 				if (buttonsEnabled)
 				{

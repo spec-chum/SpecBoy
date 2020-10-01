@@ -183,7 +183,7 @@ namespace SpecBoy
 					break;
 
 				// RAM
-				case var n when n >= 0xa000 && n <= 0xbfff:
+				case var n when n >= 0xa000 && n <= 0xbfff && ramEnabled:
 					ram[ramBank + (address & 0x1fff)] = value;
 					break;
 
