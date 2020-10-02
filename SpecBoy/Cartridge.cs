@@ -203,7 +203,7 @@ namespace SpecBoy
 			}
 
 			CartType cartType = (CartType)rom[0x147];
-			Console.WriteLine($"\nROM type: { Enum.GetName(typeof(CartType), cartType).ToUpper() }");
+			Console.WriteLine($"\nROM type: { Enum.GetName(typeof(CartType), cartType).ToUpper() } ({ (int)cartType})");
 
 			switch (cartType)
 			{

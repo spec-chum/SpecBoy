@@ -43,8 +43,6 @@ namespace SpecBoy
 			long prevCycles = 0;
 			bool logging = false;
 
-			long previousVSync = 0;
-
 			window.Closed += (s, e) => window.Close();
 
 			while (window.IsOpen)
@@ -70,10 +68,8 @@ namespace SpecBoy
 					prevCycles = currentCycles;
 				}
 
-				previousVSync = cpu.Cycles;
-
-				window.Display();
 				ppu.HitVSync = false;
+				prevCycles = cpu.Cycles;
 			}
 		}
 	}

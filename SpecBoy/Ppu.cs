@@ -92,7 +92,7 @@ namespace SpecBoy
 						currentCycle = 0;
 						Ly++;
 
-						if (Ly == 0x90)
+						if (Ly == 144)
 						{
 							ChangeMode(Mode.VBlank);
 						}
@@ -103,6 +103,7 @@ namespace SpecBoy
 
 						CompareLYC();
 					}
+
 					break;
 
 				case Mode.VBlank:
@@ -119,6 +120,7 @@ namespace SpecBoy
 						
 						CompareLYC();
 					}
+
 					break;
 
 				case Mode.OAM:
@@ -127,6 +129,7 @@ namespace SpecBoy
 						currentCycle = 0;
 						ChangeMode(Mode.LCDTransfer);
 					}
+
 					break;
 
 				case Mode.LCDTransfer:
