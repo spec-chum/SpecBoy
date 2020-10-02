@@ -408,7 +408,7 @@ namespace SpecBoy
 		{
 			texture.Update(pixels);
 			window.Draw(framebuffer);
-			//window.Display();
+			window.Display();
 		}
 
 		private int GetColourFromPalette(int colour, int palette) => (palette >> (colour << 1)) & 3;
