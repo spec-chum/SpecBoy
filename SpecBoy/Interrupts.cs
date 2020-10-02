@@ -85,11 +85,11 @@
 			}
 		}
 
-		public static bool SerialIrqReq
+		public static bool TimerIrqReq
 		{
 			get
 			{
-				return serialIrqReq;
+				return timerIrqReq;
 			}
 			set
 			{
@@ -101,15 +101,15 @@
 				{
 					interruptFlag &= 0xff ^ (1 << 2);
 				}
-				serialIrqReq = value;
+				timerIrqReq = value;
 			}
 		}
 
-		public static bool TimerIrqReq
+		public static bool SerialIrqReq
 		{
 			get
 			{
-				return timerIrqReq;
+				return serialIrqReq;
 			}
 			set
 			{
@@ -121,7 +121,7 @@
 				{
 					interruptFlag &= 0xff ^ (1 << 3);
 				}
-				timerIrqReq = value;
+				serialIrqReq = value;
 			}
 		}
 
