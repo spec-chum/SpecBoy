@@ -31,7 +31,7 @@
 		{
 			get
 			{
-				return (byte)(interruptFlag | 0xe0);
+				return interruptFlag;
 			}
 			set
 			{

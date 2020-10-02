@@ -106,7 +106,7 @@ namespace SpecBoy
 					0xff07 => (byte)(timers.Tac | 0xf8),
 
 					// IF
-					0xff0f => Interrupts.IF,
+					0xff0f => (byte)(Interrupts.IF | 0xe0),
 
 					// PPU
 					0xff40 => ppu.Lcdc,
@@ -136,7 +136,7 @@ namespace SpecBoy
 		public ushort ReadWord(int address) => (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
 
 		public void WriteByte(int address, byte value)
-		{			
+		{
 			switch (address)
 			{
 				// ROM
@@ -161,7 +161,11 @@ namespace SpecBoy
 
 				// OAM
 				case var n when n >= 0xfe00 && n <= 0xfe9f:
-					ppu.Oam[address & 0xff] = value;
+					if (dmaCycles == 0 && dmaCycles <= 160)
+					{
+						ppu.Oam[address & 0xff] = value;
+					}
+
 					break;
 
 				// Joypad
