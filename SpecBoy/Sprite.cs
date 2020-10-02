@@ -1,6 +1,6 @@
 ﻿namespace SpecBoy
 {
-	class Sprite
+	readonly struct Sprite
 	{
 		public Sprite(byte y, byte x, byte tileNum, byte attributes)
 		{
@@ -14,18 +14,18 @@
 			PalNum = Utility.IsBitSet(attributes, 4);
 		}
 
-		public short Y { get; set; }
+		public short Y { get; }
 
-		public short X { get; set; }
+		public short X { get; }
 
-		public byte TileNum { get; set; }
+		public byte TileNum { get; }
 
-		public bool Priority { get; set; }
+		public bool Priority { get; }
 
-		public bool XFlip { get; set; }
+		public bool XFlip { get; }
 
-		public bool YFlip { get; set; }
+		public bool YFlip { get; }
 
-		public bool PalNum { get; set; }
+		public bool PalNum { get; }
 	}
 }

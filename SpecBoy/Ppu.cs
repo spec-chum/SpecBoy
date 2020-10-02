@@ -342,18 +342,20 @@ namespace SpecBoy
 				}
 
 				byte tileY;
+				ushort tileIndex = 0x8000;
 				if (spriteSize == 8)
 				{
 					tileY = (byte)(sprite.YFlip ? 7 - (screenY - sprite.Y) : (screenY - sprite.Y));
+					tileIndex += (ushort)(sprite.TileNum * 16 + (tileY * 2));
 				}
 				else
 				{
 					tileY = (byte)(sprite.YFlip ? 15 - (screenY - sprite.Y) : (screenY - sprite.Y));
-					sprite.TileNum &= 0xfe;
+					tileIndex += (ushort)((sprite.TileNum & 0xfe) * 16 + (tileY * 2));
 				}
 
-				byte lowByte = ReadByteVRam(0x8000 + (sprite.TileNum * 16) + (tileY * 2));
-				byte highByte = ReadByteVRam(0x8000 + (sprite.TileNum * 16) + (tileY * 2) + 1);
+				byte lowByte = ReadByteVRam(tileIndex);
+				byte highByte = ReadByteVRam(tileIndex + 1);
 
 				for (int tilePixel = 0; tilePixel < 8; tilePixel++)
 				{
