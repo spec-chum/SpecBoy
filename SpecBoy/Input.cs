@@ -6,8 +6,9 @@ namespace SpecBoy
 	{
 		private readonly Window window;
 
-		private bool dpadEnabled = false;
-		private bool buttonsEnabled = false;
+		private bool dpadEnabled;
+		private bool buttonsEnabled;
+		private bool isDetectingSgb;
 
 		private int up;
 		private int down;
@@ -39,6 +40,12 @@ namespace SpecBoy
 		{
 			get
 			{
+				// DMG returns 0x0f as ID
+				if (isDetectingSgb)
+				{
+					return 0x0f;
+				}
+
 				byte value = (byte)(0xc0 | (!buttonsEnabled ? (1 << 5) : 0) | (!dpadEnabled ? (1 << 4) : 0));
 
 				if (buttonsEnabled)
@@ -56,6 +63,9 @@ namespace SpecBoy
 			{
 				buttonsEnabled = !Utility.IsBitSet(value, 5);
 				dpadEnabled = !Utility.IsBitSet(value, 4);
+
+				// Check for SGB detection
+				isDetectingSgb = !buttonsEnabled && !dpadEnabled;
 			}
 		}
 
