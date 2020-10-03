@@ -8,10 +8,11 @@ namespace SpecBoy
 		public ReadDelegate ReadByte;
 		public WriteDelegate WriteByte;
 
-		private int romBank;
+		private int romBank1;
 		private int ramBank;
 		private int romBankHighBits;
-		private bool ramMode;
+		private int romSize;
+		private bool bankingMode;
 		private bool ramEnabled;
 		private byte[] rom;
 		private byte[] ram;
@@ -55,7 +56,7 @@ namespace SpecBoy
 		public Cartridge(string romName)
 		{
 			ram = new byte[0x8000];
-			romBank = 0x4000;
+			romBank1 = 0x4000;
 
 			Load(romName);
 		}
@@ -79,7 +80,7 @@ namespace SpecBoy
 				var n when n >= 0x0000 && n <= 0x3fff => rom[address],
 
 				// ROM bank n
-				var n when n >= 0x4000 && n <= 0x7fff => rom[romBank + (address & 0x3fff)],
+				var n when n >= 0x4000 && n <= 0x7fff => rom[romBank1 + (address & 0x3fff)],
 
 				// Cartridge RAM
 				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[ramBank + (address & 0x1fff)],
@@ -99,36 +100,37 @@ namespace SpecBoy
 
 				// ROM bank n
 				case var n when n >= 0x2000 && n <= 0x3fff:
-					romBank = value & 0x1f;
+					romBank1 = value & 0x1f;
 
-					if (!ramMode)
+					if (!bankingMode)
 					{
-						romBank |= (romBankHighBits << 5);
+						romBank1 |= romBankHighBits;						
 					}
 
-					if (romBank == 0x00 || romBank == 0x20 || romBank == 0x40 || romBank == 0x60)
+					if (romBank1 == 0x00 || romBank1 == 0x20 || romBank1 == 0x40 || romBank1 == 0x60)
 					{
-						romBank++;
+						romBank1++;
 					}
 
-					romBank *= 0x4000;
+					romBank1 &= (romSize >> 4) - 1;
+					romBank1 *= 0x4000;
+
 					break;
 
 				// RAM bank or ROM bank high bits
 				case var n when n >= 0x4000 && n <= 0x5fff:
-					if (!ramMode)
-					{
-						romBankHighBits = (value & 0x03);
-					}
-					else
+					if (bankingMode)
 					{
 						ramBank = (value & 0x03) * 0x2000;
+						break;
 					}
+
+					romBankHighBits = (value & 0x03) << 5;
 					break;
 
 				// Bank mode select
 				case var n when n >= 0x6000 && n <= 0x7fff:
-					ramMode = (value & 1) != 0;
+					bankingMode = (value & 1) != 0;
 					break;
 
 				// RAM
@@ -149,7 +151,7 @@ namespace SpecBoy
 				var n when n >= 0x0000 && n <= 0x3fff => rom[address],
 
 				// ROM bank n
-				var n when n >= 0x4000 && n <= 0x7fff => rom[romBank + (address & 0x3fff)],
+				var n when n >= 0x4000 && n <= 0x7fff => rom[romBank1 + (address & 0x3fff)],
 
 				// Cartridge RAM
 				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[ramBank + (address & 0x1fff)],
@@ -164,15 +166,15 @@ namespace SpecBoy
 			{
 				// ROM bank n
 				case var n when n >= 0x2000 && n <= 0x3fff:
-					romBank = value & 0x7f;
+					romBank1 = value & 0x7f;
 
-					if (romBank == 0)
+					if (romBank1 == 0)
 					{
-						romBank = 0x4000;
+						romBank1 = 0x4000;
 					}
 					else
 					{ 
-						romBank *= 0x4000;
+						romBank1 *= 0x4000;
 					}
 
 					break;
@@ -276,7 +278,8 @@ namespace SpecBoy
 					break;
 			}
 
-			Console.WriteLine($"ROM size: {0x20 << rom[0x0148]}K");
+			romSize = 0x20 << rom[0x0148];
+			Console.WriteLine($"ROM size: {romSize}K ({romSize >> 4} banks)");
 		}
 	}
 }
