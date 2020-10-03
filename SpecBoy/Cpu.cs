@@ -43,6 +43,11 @@ namespace SpecBoy
 			HL = 0x014d;
 			PC = 0x0100;
 			SP = 0xfffe;
+
+			ppu.Lcdc = 0x91;
+			ppu.Bgp = 0xfc;
+			ppu.Obp0 = 0xff;
+			ppu.Obp1 = 0xff;
 		}
 
 		// Only really needed for PUSH AF and POP AF

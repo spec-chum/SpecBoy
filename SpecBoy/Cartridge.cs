@@ -55,16 +55,13 @@ namespace SpecBoy
 
 		public Cartridge(string romName)
 		{
-			ram = new byte[0x8000];
+			ram = new byte[0x20000];
 			romBank1 = 0x4000;
 
 			Load(romName);
 		}
 
-		public byte ReadByteRaw(int address)
-		{
-			return rom[address];
-		}
+		public byte ReadByteRaw(int address) => rom[address];
 
 		public void WriteByteRaw(int address, byte value)
 		{
@@ -72,22 +69,19 @@ namespace SpecBoy
 			return;
 		}
 
-		public byte ReadByteMbc1(int address)
+		public byte ReadByteMbc1(int address) => address switch
 		{
-			return address switch
-			{
-				// ROM bank0
-				var n when n >= 0x0000 && n <= 0x3fff => rom[address],
+			// ROM bank0
+			var n when n <= 0x3fff => rom[address],
 
-				// ROM bank n
-				var n when n >= 0x4000 && n <= 0x7fff => rom[romBank1 + (address & 0x3fff)],
+			// ROM bank n
+			var n when n <= 0x7fff => rom[romBank1 + (address & 0x3fff)],
 
-				// Cartridge RAM
-				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[ramBank + (address & 0x1fff)],
+			// Cartridge RAM
+			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[ramBank + (address & 0x1fff)],
 
-				_ => 0xff,
-			};
-		}
+			_ => 0xff,
+		};
 
 		public void WriteByteMbc1(int address, byte value)
 		{
@@ -143,22 +137,19 @@ namespace SpecBoy
 			}
 		}
 
-		public byte ReadByteMbc3(int address)
+		public byte ReadByteMbc3(int address) => address switch
 		{
-			return address switch
-			{
-				// ROM bank0
-				var n when n >= 0x0000 && n <= 0x3fff => rom[address],
+			// ROM bank0
+			var n when n <= 0x3fff => rom[address],
 
-				// ROM bank n
-				var n when n >= 0x4000 && n <= 0x7fff => rom[romBank1 + (address & 0x3fff)],
+			// ROM bank n
+			var n when n <= 0x7fff => rom[romBank1 + (address & 0x3fff)],
 
-				// Cartridge RAM
-				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[ramBank + (address & 0x1fff)],
+			// Cartridge RAM
+			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[ramBank + (address & 0x1fff)],
 
-				_ => 0xff,
-			};
-		}
+			_ => 0xff,
+		};
 
 		public void WriteByteMbc3(int address, byte value)
 		{

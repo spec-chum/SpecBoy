@@ -10,12 +10,12 @@ namespace SpecBoy
 	{
 		private const int scale = 4;
 
-		public readonly Cpu cpu;
-		public readonly Memory mem;
-		public readonly Timers timers;
-		public readonly Ppu ppu;
-		public readonly Input joypad;
-		public readonly Cartridge cartridge;
+		private readonly Cpu cpu;
+		private readonly Memory mem;
+		private readonly Timers timers;
+		private readonly Ppu ppu;
+		private readonly Input joypad;
+		private readonly Cartridge cartridge;
 
 		private readonly string romName;
 

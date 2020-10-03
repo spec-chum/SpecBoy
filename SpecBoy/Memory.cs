@@ -4,7 +4,6 @@ namespace SpecBoy
 {
 	class Memory
 	{
-
 		private readonly Timers timers;
 		private readonly Ppu ppu;
 		private readonly Input joypad;
@@ -13,6 +12,8 @@ namespace SpecBoy
 		private int dmaCycles;
 		private ushort dmaSrcAddr;
 		private byte dmaLastByteWritten;
+		private byte[] wRam;
+		private byte[] hRam;
 
 		public Memory(Timers timers, Ppu ppu, Input joypad, Cartridge cartridge)
 		{
@@ -21,13 +22,13 @@ namespace SpecBoy
 			this.joypad = joypad;
 			this.cartridge = cartridge;
 
-			WRam = new byte[0x2000];
-			HRam = new byte[0x7f];
+			wRam = new byte[0x2000];
+			hRam = new byte[0x7f];
 		}
-		
-		public byte[] WRam { get; set; }
 
-		public byte[] HRam { get; set; }
+		public byte[] WRam { get => wRam; set => wRam = value; }
+
+		public byte[] HRam { get => hRam; set => hRam = value; }
 
 		// Called from OnCycleUpdate in CPU
 		public void DoDma()
@@ -79,19 +80,19 @@ namespace SpecBoy
 			return address switch
 			{
 				// ROM
-				var n when n >= 0x0000 && n <= 0x7fff => cartridge.ReadByte(address),
+				var n when n <= 0x7fff => cartridge.ReadByte(address),
 
 				// VRAM
-				var n when n >= 0x8000 && n <= 0x9fff => ppu.VRam[address & 0x1fff],
+				var n when n <= 0x9fff => ppu.VRam[address & 0x1fff],
 
 				// External RAM
-				var n when n >= 0xa000 && n <= 0xbfff => cartridge.ReadByte(address),
+				var n when n <= 0xbfff => cartridge.ReadByte(address),
 
 				// RAM and mirrors
-				var n when n >= 0xc000 && n <= 0xfdff => WRam[address & 0x1fff],
+				var n when n <= 0xfdff => wRam[address & 0x1fff],
 
 				// OAM
-				var n when n >= 0xfe00 && n <= 0xfe9f => ppu.Oam[address & 0xff],
+				var n when n <= 0xfe9f => ppu.Oam[address & 0xff],
 
 				// IO Registers
 				var n when n >= 0xff00 && n <= 0xff7f => address switch
@@ -112,7 +113,7 @@ namespace SpecBoy
 					0xff40 => ppu.Lcdc,
 					0xff41 => (byte)(ppu.Stat | 0x80),
 					0xff42 => ppu.Scy,
-					0xff43 => ppu.Scx,					
+					0xff43 => ppu.Scx,
 					0xff44 => ppu.Ly,
 					0xff45 => ppu.Lyc,
 					0xff46 => (byte)(dmaSrcAddr >> 8),
@@ -125,7 +126,7 @@ namespace SpecBoy
 					_ => 0xff,
 				},
 
-				var n when n >= 0xff80 && n <= 0xfffe => HRam[address & 0x7f],
+				var n when n <= 0xfffe => hRam[address & 0x7f],
 
 				0xffff => Interrupts.IE,
 
@@ -140,27 +141,27 @@ namespace SpecBoy
 			switch (address)
 			{
 				// ROM
-				case var n when n >= 0x0000 && n <= 0x7fff:
+				case var n when n <= 0x7fff:
 					cartridge.WriteByte(address, value);
 					break;
 
 				// VRAM
-				case var n when n >= 0x8000 && n <= 0x9fff:
+				case var n when n <= 0x9fff:
 					ppu.VRam[address & 0x1fff] = value;
 					break;
 
 				// External RAM
-				case var n when n >= 0xa000 && n <= 0xbfff:
+				case var n when n <= 0xbfff:
 					cartridge.WriteByte(address, value);
 					break;
 
 				// RAM and mirrors
-				case var n when n >= 0xc000 && n <= 0xfdff:
-					WRam[address & 0x1fff] = value;
+				case var n when n <= 0xfdff:
+					wRam[address & 0x1fff] = value;
 					break;
 
 				// OAM
-				case var n when n >= 0xfe00 && n <= 0xfe9f:
+				case var n when n <= 0xfe9f:
 					if (dmaCycles == 0 && dmaCycles <= 160)
 					{
 						ppu.Oam[address & 0xff] = value;
@@ -229,7 +230,7 @@ namespace SpecBoy
 					}
 
 					// Account for delay (160 for DMA and 2 delay cycles)
-					dmaSrcAddr = (ushort)(value << 8);					
+					dmaSrcAddr = (ushort)(value << 8);
 					dmaCycles = 162;
 					break;
 
@@ -254,7 +255,7 @@ namespace SpecBoy
 					break;
 
 				case var n when n >= 0xff80 && n <= 0xfffe:
-					HRam[address & 0x7f] = value;
+					hRam[address & 0x7f] = value;
 					break;
 
 				case 0xffff:
