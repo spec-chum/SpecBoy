@@ -2,10 +2,13 @@
 {
 	class Timers
 	{
+		private readonly int[] triggerBits = new int[4] { 9, 3, 5, 7 };
+
+		private int divBit;
 		private ushort divCounter;
 		private bool lastResult;
 		private bool reloadTima;
-		private bool busConflict;
+		private bool reloadingTima;
 
 		// Registers
 		private byte tima;
@@ -14,7 +17,7 @@
 
 		public byte Div
 		{
-			get => (byte)((divCounter >> 8) & 0xff);
+			get => (byte)(divCounter >> 8);
 
 			set
 			{
@@ -27,18 +30,7 @@
 					return;
 				}
 
-				// If timer enabled we have a falling edge
-				if ((tac & (1 << 2)) != 0)
-				{
-					tima++;
-
-					if (tima == 0)
-					{
-						reloadTima = true;
-					}
-				}
-
-				lastResult = false;
+				DetectFallingEdge();
 			}
 		}
 
@@ -48,7 +40,7 @@
 			set
 			{
 				// Block write if TIMA is being reloaded
-				if (busConflict)
+				if (reloadingTima)
 				{
 					return;
 				}
@@ -67,7 +59,7 @@
 				tma = value;
 
 				// TIMA also updated if it's being reloaded when TMA written to
-				if (busConflict)
+				if (reloadingTima)
 				{
 					tima = tma;
 				}
@@ -81,50 +73,37 @@
 			{
 				tac = value;
 
+				divBit = triggerBits[tac & 3];
+
 				// Can't have falling edge if last result was 0
 				if (!lastResult)
 				{
 					return;
 				}
 
-				// If timer now disabled we have a falling edge
-				if ((tac & (1 << 2)) == 0)
-				{
-					tima++;
-
-					if (tima == 0)
-					{
-						reloadTima = true;
-					}
-				}
-
-				lastResult = false;
+				DetectFallingEdge();
 			}
 		}
 
 		public void Tick()
 		{
-			busConflict = false;
+			reloadingTima = false;
 
 			if (reloadTima)
 			{
 				reloadTima = false;
-				busConflict = true;
-
+				reloadingTima = true;
 				tima = tma;
+
 				Interrupts.TimerIrqReq = true;
 			}
 
 			divCounter += 4;
+			DetectFallingEdge();
+		}
 
-			var divBit = (tac & 0x03) switch
-			{
-				0 => 9,
-				1 => 3,
-				2 => 5,
-				_ => 7,
-			};
-
+		private void DetectFallingEdge()
+		{
 			bool result = ((tac & (1 << 2)) != 0) && ((divCounter & (1 << divBit)) != 0);
 
 			// Detect falling edge
