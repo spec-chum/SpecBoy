@@ -229,15 +229,15 @@ namespace SpecBoy
 			}
 		}
 
-		private byte ReadBytevRam(int address) => vRam[address & 0x1fff];
+		private byte ReadByteVRam(int address) => vRam[address & 0x1fff];
 
 		private void RenderBackground()
 		{
 			int colour = 0;
 			ushort tileData = (ushort)(Utility.IsBitSet(Lcdc, 4) ? 0x8000 : 0x8800);
 			ushort bgTilemap = (ushort)(Utility.IsBitSet(Lcdc, 3) ? 0x9c00 : 0x9800);
-			ushort windowTilemap = (ushort)(Utility.IsBitSet(Lcdc, 6) ? 0x9C00 : 0x9800);
-			byte winX = (byte)(wx - 7);
+			ushort windowTilemap = (ushort)(Utility.IsBitSet(Lcdc, 6) ? 0x9c00 : 0x9800);
+			short winX = (short)(wx - 7);
 
 			bool windowDrawn = false;
 			bool canRenderWindow = wy <= ly && Utility.IsBitSet(Lcdc, 5);
@@ -272,7 +272,7 @@ namespace SpecBoy
 						tilemap = bgTilemap;
 					}
 
-					byte tileIndex = ReadBytevRam(tilemap + (ty / 8 * 32) + (tx / 8));
+					byte tileIndex = ReadByteVRam(tilemap + (ty / 8 * 32) + (tx / 8));
 
 					byte tileX = (byte)(tx & 7);
 					byte tileY = (byte)(ty & 7);
@@ -287,8 +287,8 @@ namespace SpecBoy
 						tileLocation = (ushort)(tileData + 0x0800 + ((sbyte)tileIndex * 16) + (tileY * 2));
 					}
 
-					byte lowByte = ReadBytevRam(tileLocation);
-					byte highByte = ReadBytevRam(tileLocation + 1);
+					byte lowByte = ReadByteVRam(tileLocation);
+					byte highByte = ReadByteVRam(tileLocation + 1);
 
 					colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
 				}
@@ -359,8 +359,8 @@ namespace SpecBoy
 					tileIndex += (ushort)((sprite.TileNum & 0xfe) * 16 + (tileY * 2));
 				}
 
-				byte lowByte = ReadBytevRam(tileIndex);
-				byte highByte = ReadBytevRam(tileIndex + 1);
+				byte lowByte = ReadByteVRam(tileIndex);
+				byte highByte = ReadByteVRam(tileIndex + 1);
 
 				for (int tilePixel = 0; tilePixel < 8; tilePixel++)
 				{
