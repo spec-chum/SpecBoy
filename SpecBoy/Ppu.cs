@@ -46,8 +46,8 @@ namespace SpecBoy
 
 		public Ppu(RenderWindow window, int scale)
 		{
-			VRam = new byte[0x2000];
-			Oam = new byte[0xa0];
+			vRam = new byte[0x2000];
+			oam = new byte[0xa0];
 			pixels = new byte[ScreenWidth * ScreenHeight * 4];
 			scanlineBuffer = new int[160];
 

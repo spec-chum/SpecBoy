@@ -94,6 +94,9 @@ namespace SpecBoy
 				// OAM
 				var n when n <= 0xfe9f => ppu.Oam[address & 0xff],
 
+				// Not usable, but returns 0 not 0xff
+				var n when n <= 0xfeff => 0,
+
 				// IO Registers
 				var n when n >= 0xff00 && n <= 0xff7f => address switch
 				{
