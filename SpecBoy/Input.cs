@@ -40,10 +40,10 @@ namespace SpecBoy
 		{
 			get
 			{
-				// DMG returns 0x0f as ID
+				// DMG returns 0x0f as ID (top 2 bits unused, so return 0xcf)
 				if (isDetectingSgb)
 				{
-					return 0x0f;
+					return 0xcf;
 				}
 
 				byte value = (byte)(0xc0 | (!buttonsEnabled ? (1 << 5) : 0) | (!dpadEnabled ? (1 << 4) : 0));
