@@ -8,14 +8,17 @@ namespace SpecBoy
 		public ReadDelegate ReadByte;
 		public WriteDelegate WriteByte;
 
-		private int romBank1;
+		private readonly int bankLimitMask;
+		private readonly byte[] rom;
+		private readonly byte[] ram;
+
+		private int romBank;
 		private int ramBank;
-		private int romBankHighBits;
+		private int bankHighBits;
 		private int romSize;
+		private int ramSize;
 		private bool bankingMode;
 		private bool ramEnabled;
-		private byte[] rom;
-		private byte[] ram;
 
 		public delegate byte ReadDelegate(int address);
 		public delegate void WriteDelegate(int address, byte value);
@@ -55,81 +58,88 @@ namespace SpecBoy
 
 		public Cartridge(string romName)
 		{
+			rom = File.ReadAllBytes(romName);
 			ram = new byte[0x20000];
-			romBank1 = 0x4000;
+			romBank = 1;
 
-			Load(romName);
+			GetRomInfo();
+			bankLimitMask = (romSize >> 4) - 1;
 		}
 
-		public byte ReadByteRaw(int address) => rom[address];
+		public byte ReadByteRomOnly(int address) => rom[address];
 
-		public void WriteByteRaw(int address, byte value)
+		public void WriteByteRomOnly(int address, byte value)
 		{
-			Console.WriteLine("Attempted to write to unwritable ROM!");
 			return;
 		}
 
-		public byte ReadByteMbc1(int address) => address switch
+		public byte ReadByteMbc1(int address)
 		{
-			// ROM bank0
-			var n when n <= 0x3fff => rom[address],
+			// Split banked and non-banked for less cpu work during address calcs
+			return address switch
+			{
+				// ROM bank0 - Non-banked
+				var n when n <= 0x3fff && !bankingMode => rom[address],
 
-			// ROM bank n
-			var n when n <= 0x7fff => rom[romBank1 + (address & 0x3fff)],
+				// ROM bank0 - Banked
+				var n when n <= 0x3fff => rom[0x4000 * (bankHighBits & bankLimitMask) + address],
 
-			// Cartridge RAM
-			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[ramBank + (address & 0x1fff)],
+				// ROM bank n
+				var n when n <= 0x7fff => rom[0x4000 * ((romBank | bankHighBits) & bankLimitMask) + (address & 0x3fff)],
 
-			_ => 0xff,
-		};
+				// Cartridge RAM - Non-banked
+				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled && !bankingMode => ram[address & 0x1fff],
+
+				// Cartridge RAM - Banked
+				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[0x2000 * ramBank + (address & 0x1fff)],
+
+				_ => 0xff,
+			};
+		}
 
 		public void WriteByteMbc1(int address, byte value)
 		{
 			switch (address)
 			{
 				// Enable/Disable RAM
-				case var n when n >= 0x0000 && n <= 0x1fff:
+				case var n when n <= 0x1fff:
 					ramEnabled = (value & 0x0f) == 0x0a;
 					break;
 
 				// ROM bank n
-				case var n when n >= 0x2000 && n <= 0x3fff:
-					romBank1 = value & 0x1f;
+				case var n when n <= 0x3fff:
+					romBank = (value & 0x1f);
 
-					if (!bankingMode)
+					if (romBank == 0)
 					{
-						romBank1 |= romBankHighBits;						
+						romBank++;
 					}
-
-					if (romBank1 == 0x00 || romBank1 == 0x20 || romBank1 == 0x40 || romBank1 == 0x60)
-					{
-						romBank1++;
-					}
-
-					romBank1 &= (romSize >> 4) - 1;
-					romBank1 *= 0x4000;
 
 					break;
 
 				// RAM bank or ROM bank high bits
-				case var n when n >= 0x4000 && n <= 0x5fff:
-					if (bankingMode)
+				case var n when n <= 0x5fff:
+					if (ramSize >= 3)
 					{
-						ramBank = (value & 0x03) * 0x2000;
-						break;
+						ramBank = value & 3;
 					}
 
-					romBankHighBits = (value & 0x03) << 5;
+					bankHighBits = (value & 3) << 5;
 					break;
 
 				// Bank mode select
-				case var n when n >= 0x6000 && n <= 0x7fff:
-					bankingMode = (value & 1) != 0;
+				case var n when n <= 0x7fff:
+					bankingMode = (value & 1) == 1;
 					break;
 
-				// RAM
+				// RAM - Non-banked
+				case var n when n >= 0xa000 && n <= 0xbfff && ramEnabled && !bankingMode:
+					ram[address & 0x1fff] = value;
+					break;
+
+				// RAM - Banked
 				case var n when n >= 0xa000 && n <= 0xbfff && ramEnabled:
-					ram[ramBank + (address & 0x1fff)] = value;
+					ram[0x2000 * ramBank + (address & 0x1fff)] = value;
 					break;
 
 				default:
@@ -143,7 +153,7 @@ namespace SpecBoy
 			var n when n <= 0x3fff => rom[address],
 
 			// ROM bank n
-			var n when n <= 0x7fff => rom[romBank1 + (address & 0x3fff)],
+			var n when n <= 0x7fff => rom[0x4000 * romBank + (address & 0x3fff)],
 
 			// Cartridge RAM
 			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[ramBank + (address & 0x1fff)],
@@ -155,23 +165,24 @@ namespace SpecBoy
 		{
 			switch (address)
 			{
-				// ROM bank n
-				case var n when n >= 0x2000 && n <= 0x3fff:
-					romBank1 = value & 0x7f;
+				// Enable/Disable RAM
+				case var n when n <= 0x1fff:
+					ramEnabled = (value & 0x0f) == 0x0a;
+					break;
 
-					if (romBank1 == 0)
+				// ROM bank n
+				case var n when n <= 0x3fff:
+					romBank = value & 0x7f;
+
+					if (romBank == 0)
 					{
-						romBank1 = 0x4000;
-					}
-					else
-					{ 
-						romBank1 *= 0x4000;
+						romBank++;
 					}
 
 					break;
 
 				// RAM bank
-				case var n when n >= 0x4000 && n <= 0x5fff:
+				case var n when n <= 0x5fff:
 					ramBank = value * 0x2000;
 					break;
 
@@ -185,10 +196,8 @@ namespace SpecBoy
 			}
 		}
 
-		public void Load(string romName)
+		public void GetRomInfo()
 		{
-			rom = File.ReadAllBytes(romName);
-
 			Console.Write("ROM name: ");
 			for (int i = 0; i < 16; i++)
 			{
@@ -196,22 +205,20 @@ namespace SpecBoy
 			}
 
 			CartType cartType = (CartType)rom[0x147];
-			Console.WriteLine($"\nROM type: { Enum.GetName(typeof(CartType), cartType).ToUpper() } ({ (int)cartType})");
+			Console.WriteLine($"\nROM type: { Enum.GetName(typeof(CartType), cartType).ToUpper() } ({(int)cartType})");
 
 			switch (cartType)
 			{
 				case CartType.RomOnly:
 				case CartType.RomRam:
 				case CartType.RomRamBattery:
-					//Console.WriteLine("ROM Only");
-					ReadByte = ReadByteRaw;
-					WriteByte = WriteByteRaw;
+					ReadByte = ReadByteRomOnly;
+					WriteByte = WriteByteRomOnly;
 					break;
 
 				case CartType.Mbc1:
 				case CartType.Mbc1Ram:
 				case CartType.Mbc1RamBattery:
-					//Console.WriteLine("MBC!");
 					ReadByte = ReadByteMbc1;
 					WriteByte = WriteByteMbc1;
 					break;
@@ -232,7 +239,6 @@ namespace SpecBoy
 				case CartType.Mbc3:
 				case CartType.Mbc3Ram:
 				case CartType.Mbc3RamBattery:
-					//Console.WriteLine("MBC3");
 					ReadByte = ReadByteMbc3;
 					WriteByte = WriteByteMbc3;
 					break;
@@ -271,6 +277,8 @@ namespace SpecBoy
 
 			romSize = 0x20 << rom[0x0148];
 			Console.WriteLine($"ROM size: {romSize}K ({romSize >> 4} banks)");
+
+			ramSize = rom[0x149];
 		}
 	}
 }

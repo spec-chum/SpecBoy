@@ -17,8 +17,6 @@ namespace SpecBoy
 		private readonly Input joypad;
 		private readonly Cartridge cartridge;
 
-		private readonly string romName;
-
 		// SFML
 		private readonly RenderWindow window;
 
@@ -27,8 +25,6 @@ namespace SpecBoy
 			window = new RenderWindow(new VideoMode(160 * scale, 144 * scale), "SpecBoy", Styles.Default);
 			window.SetFramerateLimit(0);
 			//window.SetVerticalSyncEnabled(false);
-			
-			this.romName = romName;
 
 			timers = new Timers();
 			joypad = new Input(window);
