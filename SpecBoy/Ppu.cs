@@ -17,6 +17,15 @@ namespace SpecBoy
 		//public readonly uint[] colours = { 0xfff4fff4, 0xffc0d0c0, 0xff80a080, 0xff001000, 0xff0000ff };
 		public readonly uint[] colours = { 0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff };
 
+		public byte Lcdc;
+		public byte Scy;
+		public byte Scx;
+		public byte Wy;
+		public byte Wx;
+		public byte Bgp;
+		public byte Obp0;
+		public byte Obp1;
+
 		public bool HitVSync;
 
 		// SFML
@@ -24,31 +33,25 @@ namespace SpecBoy
 		private readonly Texture texture;
 		private readonly SfmlSprite framebuffer;
 
-		private readonly byte[] pixels;
 		private readonly int[] scanlineBuffer;
-
+		private readonly byte[] pixels;
 		private int currentCycle;
 		private Mode currentMode;
 		private byte winY;
-		private byte[] vRam;
-		private byte[] oam;
-		private byte lcdc;
-		private byte stat;
-		private byte scy;
-		private byte scx;
 		private byte ly;
 		private byte lyc;
-		private byte wy;
-		private byte wx;
-		private byte bgp;
-		private byte obp0;
-		private byte obp1;
+
+		private bool coincidenceInt;
+		private bool oamInt;
+		private bool vBlankInt;
+		private bool hBlankInt;
+		private bool coincidenceFlag;
 
 		public Ppu(RenderWindow window, int scale)
 		{
-			vRam = new byte[0x2000];
-			oam = new byte[0xa0];
-			pixels = new byte[ScreenWidth * ScreenHeight * 4];
+			VRam = new byte[0x2000];
+			Oam = new byte[0xa0];
+			pixels = new byte[ScreenWidth * ScreenHeight * sizeof(uint)];
 			scanlineBuffer = new int[160];
 
 			this.window = window;
@@ -67,31 +70,53 @@ namespace SpecBoy
 			LCDTransfer
 		}
 
-		public byte[] VRam { get => vRam; set => vRam = value; }
+		public byte[] VRam { get; }
 
-		public byte[] Oam { get => oam; set => oam = value; }
+		public byte[] Oam { get; }
 
-		public byte Lcdc { get => lcdc; set => lcdc = value; }
+		public byte Stat
+		{
+			get
+			{
+				byte value = (byte)(0x80
+					| (coincidenceInt ? (1 << 6) : 0)
+					| (oamInt ? (1 << 5) : 0)
+					| (vBlankInt ? (1 << 4) : 0)
+					| (hBlankInt ? (1 << 3) : 0)
+					| (coincidenceFlag ? (1 << 2) : 0)
+					| (int)currentMode);
 
-		public byte Stat { get => stat; set => stat = value; }
+				return value;
+			}
 
-		public byte Scy { get => scy; set => scy = value; }
+			set
+			{
+				coincidenceInt = (value & 0x40) != 0;
+				oamInt = (value & 0x20) != 0;
+				vBlankInt = (value & 0x10) != 0;
+				hBlankInt = (value & 0x08) != 0;
+			}
+		}
 
-		public byte Scx { get => scx; set => scx = value; }
+		public byte Ly
+		{
+			get => ly;
+			set
+			{
+				ly = value;
+				UpdateCoincidence();
+			}
+		}
 
-		public byte Ly { get => ly; set => ly = value; }
-
-		public byte Lyc { get => lyc; set => lyc = value; }
-
-		public byte Wy { get => wy; set => wy = value; }
-
-		public byte Wx { get => wx; set => wx = value; }
-
-		public byte Bgp { get => bgp; set => bgp = value; }
-
-		public byte Obp0 { get => obp0; set => obp0 = value; }
-
-		public byte Obp1 { get => obp1; set => obp1 = value; }
+		public byte Lyc
+		{
+			get => lyc;
+			set
+			{
+				lyc = value;
+				UpdateCoincidence();
+			}
+		}
 
 		public void Tick()
 		{
@@ -103,9 +128,9 @@ namespace SpecBoy
 					if (currentCycle == 204)
 					{
 						currentCycle = 0;
-						ly++;
 
-						if (ly == 144)
+						Ly++;
+						if (Ly == 144)
 						{
 							ChangeMode(Mode.VBlank);
 						}
@@ -113,8 +138,6 @@ namespace SpecBoy
 						{
 							ChangeMode(Mode.OAM);
 						}
-
-						CompareLYC();
 					}
 
 					break;
@@ -123,15 +146,13 @@ namespace SpecBoy
 					if (currentCycle == 456)
 					{
 						currentCycle = 0;
-						ly++;
 
-						if (ly == 154)
+						Ly++;
+						if (Ly == 154)
 						{
 							ChangeMode(Mode.OAM);
-							ly = 0;
+							Ly = 0;
 						}
-
-						CompareLYC();
 					}
 
 					break;
@@ -160,14 +181,11 @@ namespace SpecBoy
 			switch (mode)
 			{
 				case Mode.HBlank:
-					int framebufferIndex = ly * 160 * 4;
-					RenderScanline(framebufferIndex);
+					RenderScanline();
 
 					currentMode = Mode.HBlank;
 
-					stat = (byte)(stat & 0xfc);
-
-					if (Utility.IsBitSet(stat, 3))
+					if (hBlankInt)
 					{
 						Interrupts.StatIrqReq = true;
 					}
@@ -184,9 +202,13 @@ namespace SpecBoy
 
 					Interrupts.VBlankIrqReq = true;
 
-					stat = (byte)((stat & 0xfc) | 1);
+					// Also fire OAM interrupt if bit set
+					if (oamInt)
+					{
+						Interrupts.StatIrqReq = true;
+					}
 
-					if (Utility.IsBitSet(stat, 4))
+					if (vBlankInt)
 					{
 						Interrupts.StatIrqReq = true;
 					}
@@ -196,9 +218,7 @@ namespace SpecBoy
 				case Mode.OAM:
 					currentMode = Mode.OAM;
 
-					stat = (byte)((stat & 0xfc) | 2);
-
-					if (Utility.IsBitSet(stat, 5))
+					if (oamInt)
 					{
 						Interrupts.StatIrqReq = true;
 					}
@@ -207,29 +227,21 @@ namespace SpecBoy
 
 				case Mode.LCDTransfer:
 					currentMode = Mode.LCDTransfer;
-					stat = (byte)((stat & 0xfc) | 3);
 					break;
 			}
 		}
 
-		private void CompareLYC()
+		private void UpdateCoincidence()
 		{
-			if (ly == lyc)
-			{
-				stat = Utility.SetBit(stat, 2);
+			coincidenceFlag = Ly == Lyc;
 
-				if (Utility.IsBitSet(stat, 6))
-				{
-					Interrupts.StatIrqReq = true;
-				}
-			}
-			else
+			if (coincidenceFlag && coincidenceInt)
 			{
-				stat = Utility.ClearBit(stat, 2);
+				Interrupts.StatIrqReq = true;
 			}
 		}
 
-		private byte ReadByteVRam(int address) => vRam[address & 0x1fff];
+		private byte ReadByteVRam(int address) => VRam[address & 0x1fff];
 
 		private void RenderBackground()
 		{
@@ -237,10 +249,10 @@ namespace SpecBoy
 			ushort tileData = (ushort)(Utility.IsBitSet(Lcdc, 4) ? 0x8000 : 0x8800);
 			ushort bgTilemap = (ushort)(Utility.IsBitSet(Lcdc, 3) ? 0x9c00 : 0x9800);
 			ushort windowTilemap = (ushort)(Utility.IsBitSet(Lcdc, 6) ? 0x9c00 : 0x9800);
-			short winX = (short)(wx - 7);
+			short winX = (short)(Wx - 7);
 
 			bool windowDrawn = false;
-			bool canRenderWindow = wy <= ly && Utility.IsBitSet(Lcdc, 5);
+			bool canRenderWindow = Wy <= Ly && Utility.IsBitSet(Lcdc, 5);
 
 			for (int x = 0; x < 160; x++)
 			{
@@ -266,8 +278,8 @@ namespace SpecBoy
 					{
 						windowDrawn = false;
 
-						tx = (byte)(x + scx);
-						ty = (byte)(ly + scy);
+						tx = (byte)(x + Scx);
+						ty = (byte)(Ly + Scy);
 
 						tilemap = bgTilemap;
 					}
@@ -311,10 +323,7 @@ namespace SpecBoy
 				return;
 			}
 
-			byte screenY = ly;
-
 			var sprites = new List<Sprite>();
-
 			int spriteSize = Utility.IsBitSet(Lcdc, 2) ? 16 : 8;
 
 			// Search OAM for sprites that appear on scanline (up to 10)
@@ -323,7 +332,7 @@ namespace SpecBoy
 				short spriteStartY = (short)(Oam[i] - 16);
 				short spriteEndY = (short)(spriteStartY + spriteSize);
 
-				if (spriteStartY <= screenY && screenY < spriteEndY)
+				if (spriteStartY <= Ly && Ly < spriteEndY)
 				{
 					sprites.Add(new Sprite(Oam[i], Oam[i + 1], Oam[i + 2], Oam[i + 3]));
 				}
@@ -350,12 +359,12 @@ namespace SpecBoy
 				ushort tileIndex = 0x8000;
 				if (spriteSize == 8)
 				{
-					tileY = (byte)(sprite.YFlip ? 7 - (screenY - sprite.Y) : (screenY - sprite.Y));
+					tileY = (byte)(sprite.YFlip ? 7 - (Ly - sprite.Y) : (Ly - sprite.Y));
 					tileIndex += (ushort)(sprite.TileNum * 16 + (tileY * 2));
 				}
 				else
 				{
-					tileY = (byte)(sprite.YFlip ? 15 - (screenY - sprite.Y) : (screenY - sprite.Y));
+					tileY = (byte)(sprite.YFlip ? 15 - (Ly - sprite.Y) : (Ly - sprite.Y));
 					tileIndex += (ushort)((sprite.TileNum & 0xfe) * 16 + (tileY * 2));
 				}
 
@@ -388,7 +397,7 @@ namespace SpecBoy
 
 					// Get colour
 					int colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
-					int pal = sprite.PalNum ? obp1 : obp0;
+					int pal = sprite.PalNum ? Obp1 : Obp0;
 
 					// Check priority and only draw pixel if not transparent colour
 					if ((!sprite.Priority || scanlineBuffer[currentPixel] == 0) && colour != 0)
@@ -400,12 +409,12 @@ namespace SpecBoy
 			}
 		}
 
-		private void RenderScanline(int framebufferIndex)
+		private void RenderScanline()
 		{
 			RenderBackground();
 			RenderSprites();
 
-			var scanline = MemoryMarshal.Cast<byte, uint>(new Span<byte>(pixels, framebufferIndex, sizeof(uint) * 160));
+			var scanline = MemoryMarshal.Cast<byte, uint>(new Span<byte>(pixels, Ly * (160 * sizeof(uint)), 160 * sizeof(uint)));
 
 			for (int i = 0; i < 160; i++)
 			{
