@@ -1193,9 +1193,6 @@ namespace SpecBoy
 				// Only service if interrupts are actually enabled
 				if (ime)
 				{
-					// Leaves IF unchanged if not altered below
-					int bitToClear = 8;
-
 					// 6M (24T) cycles in total (inc. fetch) to service interrupt
 					Cycles++;
 					ime = false;
@@ -1209,31 +1206,26 @@ namespace SpecBoy
 					if (Interrupts.VBlankIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.VBlankIeBit))
 					{
 						Interrupts.VBlankIrqReq = false;
-						bitToClear = Interrupts.VBlankIeBit;
 						IrqVector = Interrupts.VBlankIrqVector;
 					}
 					else if (Interrupts.StatIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.StatIeBit))
 					{
 						Interrupts.StatIrqReq = false;
-						bitToClear = Interrupts.StatIeBit;
 						IrqVector = Interrupts.StatIrqVector;
 					}
 					else if (Interrupts.TimerIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.TimerIeBit))
 					{
 						Interrupts.TimerIrqReq = false;
-						bitToClear = Interrupts.TimerIeBit;
 						IrqVector = Interrupts.TimerIrqVector;
 					}
 					else if (Interrupts.SerialIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.SerialIeBit))
 					{
 						Interrupts.SerialIrqReq = false;
-						bitToClear = Interrupts.SerialIeBit;
 						IrqVector = Interrupts.SerialIrqVector;
 					}
 					else if (Interrupts.JoypadIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.JoypadIeBit))
 					{
 						Interrupts.JoypadIrqReq = false;
-						bitToClear = Interrupts.JoypadIeBit;
 						IrqVector = Interrupts.JoypadIrqVector;
 					}
 
@@ -1241,8 +1233,7 @@ namespace SpecBoy
 					SP--;
 					WriteByte(SP, (byte)PC);
 
-					// Clear IF bit and set PC (IF remains unchanged if no matches)
-					Interrupts.IF = Utility.ClearBit(Interrupts.IF, bitToClear);
+					// Jump to IRQ vector
 					PC = IrqVector;
 					Cycles++;
 				}
