@@ -6,29 +6,27 @@ namespace SpecBoy
 	{
 		private readonly Timers timers;
 		private readonly Ppu ppu;
-		private readonly Input joypad;
+		private readonly Joypad joypad;
 		private readonly Cartridge cartridge;
 
 		private int dmaCycles;
 		private ushort dmaSrcAddr;
 		private byte dmaLastByteWritten;
-		private byte[] wRam;
-		private byte[] hRam;
 
-		public Memory(Timers timers, Ppu ppu, Input joypad, Cartridge cartridge)
+		public Memory(Timers timers, Ppu ppu, Joypad joypad, Cartridge cartridge)
 		{
 			this.timers = timers;
 			this.ppu = ppu;
 			this.joypad = joypad;
 			this.cartridge = cartridge;
 
-			wRam = new byte[0x2000];
-			hRam = new byte[0x7f];
+			WRam = new byte[0x2000];
+			HRam = new byte[0x7f];
 		}
 
-		public byte[] WRam { get => wRam; set => wRam = value; }
+		public byte[] WRam { get; }
 
-		public byte[] HRam { get => hRam; set => hRam = value; }
+		public byte[] HRam { get; }
 
 		// Called from OnCycleUpdate in CPU
 		public void DoDma()
@@ -89,7 +87,7 @@ namespace SpecBoy
 				var n when n <= 0xbfff => cartridge.ReadByte(address),
 
 				// RAM and mirrors
-				var n when n <= 0xfdff => wRam[address & 0x1fff],
+				var n when n <= 0xfdff => WRam[address & 0x1fff],
 
 				// OAM
 				var n when n <= 0xfe9f => ppu.Oam[address & 0xff],
@@ -101,7 +99,7 @@ namespace SpecBoy
 				var n when n >= 0xff00 && n <= 0xff7f => address switch
 				{
 					// JOYPAD
-					0xff00 => joypad.Joypad,
+					0xff00 => joypad.JoyP,
 
 					// TIMERS
 					0xff04 => timers.Div,
@@ -129,7 +127,7 @@ namespace SpecBoy
 					_ => 0xff,
 				},
 
-				var n when n <= 0xfffe => hRam[address & 0x7f],
+				var n when n <= 0xfffe => HRam[address & 0x7f],
 
 				0xffff => Interrupts.IE,
 
@@ -160,7 +158,7 @@ namespace SpecBoy
 
 				// RAM and mirrors
 				case var n when n <= 0xfdff:
-					wRam[address & 0x1fff] = value;
+					WRam[address & 0x1fff] = value;
 					break;
 
 				// OAM
@@ -174,7 +172,7 @@ namespace SpecBoy
 
 				// Joypad
 				case 0xff00:
-					joypad.Joypad = value;
+					joypad.JoyP = value;
 					break;
 
 				// Timers
@@ -258,7 +256,7 @@ namespace SpecBoy
 					break;
 
 				case var n when n >= 0xff80 && n <= 0xfffe:
-					hRam[address & 0x7f] = value;
+					HRam[address & 0x7f] = value;
 					break;
 
 				case 0xffff:

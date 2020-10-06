@@ -2,10 +2,8 @@
 
 namespace SpecBoy
 {
-	class Input
+	class Joypad
 	{
-		private readonly Window window;
-
 		private bool dpadEnabled;
 		private bool buttonsEnabled;
 		private bool isDetectingSgb;
@@ -19,10 +17,8 @@ namespace SpecBoy
 		private int start;
 		private int select;
 
-		public Input(Window window)
+		public Joypad(Window window)
 		{
-			this.window = window;
-
 			window.KeyPressed += OnKeyPressed;
 			window.KeyReleased += OnKeyReleased;
 
@@ -36,7 +32,7 @@ namespace SpecBoy
 			start = 1;
 		}
 
-		public byte Joypad
+		public byte JoyP
 		{
 			get
 			{

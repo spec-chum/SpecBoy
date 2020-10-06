@@ -14,7 +14,7 @@ namespace SpecBoy
 		private readonly Memory mem;
 		private readonly Timers timers;
 		private readonly Ppu ppu;
-		private readonly Input joypad;
+		private readonly Joypad joypad;
 		private readonly Cartridge cartridge;
 
 		// SFML
@@ -27,7 +27,7 @@ namespace SpecBoy
 			//window.SetVerticalSyncEnabled(false);
 
 			timers = new Timers();
-			joypad = new Input(window);
+			joypad = new Joypad(window);
 			ppu = new Ppu(window, scale);
 			cartridge = new Cartridge(romName);
 			mem = new Memory(timers, ppu, joypad, cartridge);
