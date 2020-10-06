@@ -9,17 +9,16 @@ using SfmlSprite = SFML.Graphics.Sprite;
 
 namespace SpecBoy
 {
-	class Ppu
+	partial class Ppu
 	{
 		private const int ScreenWidth = 160;
 		private const int ScreenHeight = 144;
 
-		//public readonly uint[] colours = { 0xfff4fff4, 0xffc0d0c0, 0xff80a080, 0xff001000, 0xff0000ff };
 		public readonly uint[] colours = { 0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff };
 
-		public byte Lcdc;
 		public byte Scy;
 		public byte Scx;
+		public byte Lyc;
 		public byte Wy;
 		public byte Wx;
 		public byte Bgp;
@@ -35,17 +34,12 @@ namespace SpecBoy
 
 		private readonly int[] scanlineBuffer;
 		private readonly byte[] pixels;
-		private int currentCycle;
-		private Mode currentMode;
-		private byte winY;
-		private byte ly;
-		private byte lyc;
 
-		private bool coincidenceInt;
-		private bool oamInt;
-		private bool vBlankInt;
-		private bool hBlankInt;
-		private bool coincidenceFlag;
+		private LcdcReg lcdc;
+		private StatReg stat;
+
+		private int currentCycle;
+		private byte winY;
 
 		public Ppu(RenderWindow window, int scale)
 		{
@@ -56,10 +50,12 @@ namespace SpecBoy
 
 			this.window = window;
 			texture = new Texture(ScreenWidth, ScreenHeight);
-			framebuffer = new SfmlSprite(texture);
-			framebuffer.Scale = new Vector2f(scale, scale);
+			framebuffer = new SfmlSprite(texture)
+			{
+				Scale = new Vector2f(scale, scale)
+			};
 
-			currentMode = Mode.OAM;
+			stat.currentMode = Mode.OAM;
 		}
 
 		private enum Mode
@@ -74,55 +70,39 @@ namespace SpecBoy
 
 		public byte[] Oam { get; }
 
+		public byte Lcdc
+		{
+			get
+			{
+				return lcdc.GetByte();
+			}
+
+			set
+			{
+				lcdc.SetByte(value);
+			}
+		}
+
 		public byte Stat
 		{
 			get
 			{
-				byte value = (byte)(0x80
-					| (coincidenceInt ? (1 << 6) : 0)
-					| (oamInt ? (1 << 5) : 0)
-					| (vBlankInt ? (1 << 4) : 0)
-					| (hBlankInt ? (1 << 3) : 0)
-					| (coincidenceFlag ? (1 << 2) : 0)
-					| (int)currentMode);
-
-				return value;
+				return stat.GetByte();
 			}
 
 			set
 			{
-				coincidenceInt = (value & 0x40) != 0;
-				oamInt = (value & 0x20) != 0;
-				vBlankInt = (value & 0x10) != 0;
-				hBlankInt = (value & 0x08) != 0;
+				stat.SetByte(value);
 			}
 		}
 
-		public byte Ly
-		{
-			get => ly;
-			set
-			{
-				ly = value;
-				UpdateCoincidence();
-			}
-		}
-
-		public byte Lyc
-		{
-			get => lyc;
-			set
-			{
-				lyc = value;
-				UpdateCoincidence();
-			}
-		}
+		public byte Ly { get; private set; }
 
 		public void Tick()
 		{
 			currentCycle += 4;
 
-			switch (currentMode)
+			switch (stat.currentMode)
 			{
 				case Mode.HBlank:
 					if (currentCycle == 204)
@@ -130,6 +110,7 @@ namespace SpecBoy
 						currentCycle = 0;
 
 						Ly++;
+
 						if (Ly == 144)
 						{
 							ChangeMode(Mode.VBlank);
@@ -138,6 +119,8 @@ namespace SpecBoy
 						{
 							ChangeMode(Mode.OAM);
 						}
+
+						UpdateCoincidence();
 					}
 
 					break;
@@ -148,11 +131,14 @@ namespace SpecBoy
 						currentCycle = 0;
 
 						Ly++;
+
 						if (Ly == 154)
 						{
 							ChangeMode(Mode.OAM);
 							Ly = 0;
 						}
+
+						UpdateCoincidence();
 					}
 
 					break;
@@ -178,14 +164,14 @@ namespace SpecBoy
 
 		private void ChangeMode(Mode mode)
 		{
+			stat.currentMode = mode;
+
 			switch (mode)
 			{
 				case Mode.HBlank:
 					RenderScanline();
 
-					currentMode = Mode.HBlank;
-
-					if (hBlankInt)
+					if (stat.hBlankInt)
 					{
 						Interrupts.StatIrqReq = true;
 					}
@@ -198,17 +184,15 @@ namespace SpecBoy
 					winY = 0;
 					RenderFrame();
 
-					currentMode = Mode.VBlank;
-
 					Interrupts.VBlankIrqReq = true;
 
 					// Also fire OAM interrupt if bit set
-					if (oamInt)
+					if (stat.oamInt)
 					{
 						Interrupts.StatIrqReq = true;
 					}
 
-					if (vBlankInt)
+					if (stat.vBlankInt)
 					{
 						Interrupts.StatIrqReq = true;
 					}
@@ -216,9 +200,7 @@ namespace SpecBoy
 					break;
 
 				case Mode.OAM:
-					currentMode = Mode.OAM;
-
-					if (oamInt)
+					if (stat.oamInt)
 					{
 						Interrupts.StatIrqReq = true;
 					}
@@ -226,16 +208,15 @@ namespace SpecBoy
 					break;
 
 				case Mode.LCDTransfer:
-					currentMode = Mode.LCDTransfer;
 					break;
 			}
 		}
 
 		private void UpdateCoincidence()
 		{
-			coincidenceFlag = Ly == Lyc;
+			stat.coincidenceFlag = Ly == Lyc;
 
-			if (coincidenceFlag && coincidenceInt)
+			if (stat.coincidenceFlag && stat.coincidenceInt)
 			{
 				Interrupts.StatIrqReq = true;
 			}
@@ -246,18 +227,18 @@ namespace SpecBoy
 		private void RenderBackground()
 		{
 			int colour = 0;
-			ushort tileData = (ushort)(Utility.IsBitSet(Lcdc, 4) ? 0x8000 : 0x8800);
-			ushort bgTilemap = (ushort)(Utility.IsBitSet(Lcdc, 3) ? 0x9c00 : 0x9800);
-			ushort windowTilemap = (ushort)(Utility.IsBitSet(Lcdc, 6) ? 0x9c00 : 0x9800);
+			ushort tileData = (ushort)(lcdc.tileDataSelect ? 0x8000 : 0x8800);
+			ushort bgTilemap = (ushort)(lcdc.bgTileMapSelect ? 0x9c00 : 0x9800);
+			ushort windowTilemap = (ushort)(lcdc.windowTileMapSelect ? 0x9c00 : 0x9800);
 			short winX = (short)(Wx - 7);
 
 			bool windowDrawn = false;
-			bool canRenderWindow = Wy <= Ly && Utility.IsBitSet(Lcdc, 5);
+			bool canRenderWindow = Wy <= Ly && lcdc.windowEnabled;
 
 			for (int x = 0; x < 160; x++)
 			{
 				// Colour is 0 if BG Priority bit not set
-				if (Utility.IsBitSet(Lcdc, 0))
+				if (lcdc.bgEnabled)
 				{
 					ushort tilemap;
 					byte tx;
@@ -318,13 +299,13 @@ namespace SpecBoy
 		private void RenderSprites()
 		{
 			// Just return if sprites not enabled
-			if (!Utility.IsBitSet(Lcdc, 1))
+			if (!lcdc.spritesEnabled)
 			{
 				return;
 			}
 
 			var sprites = new List<Sprite>();
-			int spriteSize = Utility.IsBitSet(Lcdc, 2) ? 16 : 8;
+			int spriteSize = lcdc.spriteSize ? 16 : 8;
 
 			// Search OAM for sprites that appear on scanline (up to 10)
 			for (int i = 0; i < 0xa0 && sprites.Count < 10; i += 4)
@@ -399,7 +380,7 @@ namespace SpecBoy
 					int colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
 					int pal = sprite.PalNum ? Obp1 : Obp0;
 
-					// Check priority and only draw pixel if not transparent colour
+					// Check priority and onLy draw pixel if not transparent colour
 					if ((!sprite.Priority || scanlineBuffer[currentPixel] == 0) && colour != 0)
 					{
 						scanlineBuffer[currentPixel] = GetColourFromPalette(colour, pal);
