@@ -41,22 +41,39 @@ namespace SpecBoy
 
 			window.Closed += (s, e) => window.Close();
 
+			var rand = new Random();
+
 			while (window.IsOpen)
 			{
 				long cyclesThisFrame = 0;
 				long currentCycles = 0;
-
+								
 				window.DispatchEvents();
+
+				long prevPC = 0;
 
 				while (!ppu.HitVSync)
 				{
 					if (logging)
 					{
-						Console.WriteLine($"A: {cpu.A:X2} F: {cpu.F:X2}" +
-							$" B: {cpu.B:X2} C: {cpu.C:X2} D: {cpu.D:X2} E: {cpu.E:X2} H: {cpu.H:X2} L: {cpu.L:X2}" +
-							$" SP: {cpu.SP:X4} PC: 00:{cpu.PC:X4}" +
-							$" ({mem.ReadByte(cpu.PC, true):X2} {mem.ReadByte(cpu.PC + 1, true):X2}" +
-							$" {mem.ReadByte(cpu.PC + 2, true):X2} {mem.ReadByte(cpu.PC + 3, true):X2})");
+						if (prevPC != cpu.PC)
+						{
+							Console.WriteLine($"A: {cpu.A:X2} F: {cpu.F:X2}" +
+								$" B: {cpu.B:X2} C: {cpu.C:X2} D: {cpu.D:X2} E: {cpu.E:X2} H: {cpu.H:X2} L: {cpu.L:X2}" +
+								$" SP: {cpu.SP:X4} PC: 00:{cpu.PC:X4}" +
+								$" ({mem.ReadByte(cpu.PC, true):X2} {mem.ReadByte(cpu.PC + 1, true):X2}" +
+								$" {mem.ReadByte(cpu.PC + 2, true):X2} {mem.ReadByte(cpu.PC + 3, true):X2})");
+						}
+
+						prevPC = cpu.PC;
+
+						//Console.WriteLine($"PC: {cpu.PC:X4} AF: {cpu.AF:X4}, BC: {cpu.BC:X4}, DE: {cpu.DE:X4}, HL: {cpu.HL:X4}, SP: {cpu.SP:X4} ");
+					}
+
+					var rng = rand.Next(0, 65536);
+					if (rng > 65530)
+					{
+						window.DispatchEvents();
 					}
 
 					currentCycles = cpu.Execute();

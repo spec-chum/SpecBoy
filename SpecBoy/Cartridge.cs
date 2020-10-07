@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.IO.MemoryMappedFiles;
+using System.Security.Cryptography;
 
 namespace SpecBoy
 {
@@ -9,8 +11,12 @@ namespace SpecBoy
 		public WriteDelegate WriteByte;
 
 		private readonly int bankLimitMask;
-		private readonly byte[] rom;
-		private readonly byte[] ram;
+		//private readonly byte[] rom;
+		//private readonly MemoryMappedFile romFile;
+		private readonly MemoryMappedViewAccessor rom;
+		//private readonly byte[] ram;
+		//private readonly MemoryMappedFile ramFile;
+		private readonly MemoryMappedViewAccessor ram;
 
 		private int romBank;
 		private int ramBank;
@@ -58,15 +64,22 @@ namespace SpecBoy
 
 		public Cartridge(string romName)
 		{
-			rom = File.ReadAllBytes(romName);
-			ram = new byte[0x20000];
+			rom = MemoryMappedFile.CreateFromFile(romName, FileMode.Open)
+				.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
+			//rom = File.ReadAllBytes(romName);
+
+			ram = MemoryMappedFile.CreateNew("sram.dat", 0x20000)
+				.CreateViewAccessor(0, 0, MemoryMappedFileAccess.ReadWrite);
+			//ram = new byte[0x20000];
+
 			romBank = 1;
 
 			GetRomInfo();
 			bankLimitMask = (romSize >> 4) - 1;
 		}
 
-		public byte ReadByteRomOnly(int address) => rom[address];
+		//public byte ReadByteRomOnly(int address) => rom[address];
+		public byte ReadByteRomOnly(int address) => rom.ReadByte(address);
 
 		public void WriteByteRomOnly(int address, byte value)
 		{
@@ -79,19 +92,19 @@ namespace SpecBoy
 			return address switch
 			{
 				// ROM bank0 - Non-banked
-				var n when n <= 0x3fff && !bankingMode => rom[address],
+				var n when n <= 0x3fff && !bankingMode => rom.ReadByte(address),
 
 				// ROM bank0 - Banked
-				var n when n <= 0x3fff => rom[0x4000 * (bankHighBits & bankLimitMask) + address],
+				var n when n <= 0x3fff => rom.ReadByte(0x4000 * (bankHighBits & bankLimitMask) + address),
 
 				// ROM bank n
-				var n when n <= 0x7fff => rom[0x4000 * ((romBank | bankHighBits) & bankLimitMask) + (address & 0x3fff)],
+				var n when n <= 0x7fff => rom.ReadByte(0x4000 * ((romBank | bankHighBits) & bankLimitMask) + (address & 0x3fff)),
 
 				// Cartridge RAM - Non-banked
-				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled && !bankingMode => ram[address & 0x1fff],
+				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled && !bankingMode => ram.ReadByte(address & 0x1fff),
 
 				// Cartridge RAM - Banked
-				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[0x2000 * ramBank + (address & 0x1fff)],
+				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram.ReadByte(0x2000 * ramBank + (address & 0x1fff)),
 
 				_ => 0xff,
 			};
@@ -134,12 +147,12 @@ namespace SpecBoy
 
 				// RAM - Non-banked
 				case var n when n >= 0xa000 && n <= 0xbfff && ramEnabled && !bankingMode:
-					ram[address & 0x1fff] = value;
+					ram.Write(address & 0x1fff, value);
 					break;
 
 				// RAM - Banked
 				case var n when n >= 0xa000 && n <= 0xbfff && ramEnabled:
-					ram[0x2000 * ramBank + (address & 0x1fff)] = value;
+					ram.Write(0x2000 * ramBank + (address & 0x1fff), value);
 					break;
 
 				default:
@@ -150,13 +163,13 @@ namespace SpecBoy
 		public byte ReadByteMbc3(int address) => address switch
 		{
 			// ROM bank0
-			var n when n <= 0x3fff => rom[address],
+			var n when n <= 0x3fff => rom.ReadByte(address),
 
 			// ROM bank n
-			var n when n <= 0x7fff => rom[0x4000 * romBank + (address & 0x3fff)],
+			var n when n <= 0x7fff => rom.ReadByte(0x4000 * romBank + (address & 0x3fff)),
 
 			// Cartridge RAM
-			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram[ramBank + (address & 0x1fff)],
+			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram.ReadByte(ramBank + (address & 0x1fff)),
 
 			_ => 0xff,
 		};
@@ -188,7 +201,7 @@ namespace SpecBoy
 
 				// RAM
 				case var n when n >= 0xa000 && n <= 0xbfff && ramEnabled:
-					ram[ramBank + (address & 0x1fff)] = value;
+					ram.Write(ramBank + (address & 0x1fff), value);
 					break;
 
 				default:
@@ -201,10 +214,12 @@ namespace SpecBoy
 			Console.Write("ROM name: ");
 			for (int i = 0; i < 16; i++)
 			{
-				Console.Write((char)rom[0x0134 + i]);
+				//Console.Write((char)rom[0x0134 + i]);
+				Console.Write((char)rom.ReadByte(0x0134 + i));
 			}
 
-			CartType cartType = (CartType)rom[0x147];
+			//CartType cartType = (CartType)rom[0x147];
+			CartType cartType = (CartType)rom.ReadByte(0x147);
 			Console.WriteLine($"\nROM type: { Enum.GetName(typeof(CartType), cartType).ToUpper() } ({(int)cartType})");
 
 			switch (cartType)
@@ -275,10 +290,12 @@ namespace SpecBoy
 					break;
 			}
 
-			romSize = 0x20 << rom[0x0148];
+			//romSize = 0x20 << rom[0x0148];
+			romSize = 0x20 << rom.ReadByte(0x148);
 			Console.WriteLine($"ROM size: {romSize}K ({romSize >> 4} banks)");
 
-			ramSize = rom[0x149];
+			//ramSize = rom[0x149];
+			ramSize = rom.ReadByte(0x149);
 		}
 	}
 }
