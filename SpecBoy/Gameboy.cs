@@ -1,6 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Threading.Tasks;
 using SFML.Graphics;
 using SFML.Window;
 
@@ -41,8 +39,6 @@ namespace SpecBoy
 
 			window.Closed += (s, e) => window.Close();
 
-			var rand = new Random();
-
 			while (window.IsOpen)
 			{
 				long cyclesThisFrame = 0;
@@ -52,7 +48,7 @@ namespace SpecBoy
 
 				long prevPC = 0;
 
-				while (cyclesThisFrame < 17556 && !ppu.HitVSync)
+				while (cyclesThisFrame < (70224 / 4) && !ppu.HitVSync)
 				{
 					if (logging)
 					{
@@ -66,8 +62,6 @@ namespace SpecBoy
 						}
 
 						prevPC = cpu.PC;
-
-						//Console.WriteLine($"PC: {cpu.PC:X4} AF: {cpu.AF:X4}, BC: {cpu.BC:X4}, DE: {cpu.DE:X4}, HL: {cpu.HL:X4}, SP: {cpu.SP:X4} ");
 					}
 
 					currentCycles = cpu.Execute();
