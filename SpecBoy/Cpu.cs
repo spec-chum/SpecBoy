@@ -28,9 +28,6 @@ namespace SpecBoy
 		// Interrupt Master Enable flag
 		private bool ime;
 
-		// Cycle counter
-		private long cycles;
-
 		public Cpu(Memory mem, Ppu ppu, Timers timers)
 		{
 			this.mem = mem;
@@ -97,16 +94,7 @@ namespace SpecBoy
 
 		public ushort SP { get; private set; }
 
-		public long Cycles
-		{
-			get => cycles;
-
-			set
-			{
-				cycles = value;
-				OnCycleUpdate();
-			}
-		}
+		public long Cycles { get; private set; }
 
 		public long Execute()
 		{
@@ -114,9 +102,9 @@ namespace SpecBoy
 
 			if (isHalted)
 			{
-				// Emulate NOP, so increase cycles
-				Cycles++;
-				return cycles;
+				// Emulate NOP, so just tick
+				CycleTick();
+				return Cycles;
 			}
 
 			int regId;
@@ -546,7 +534,7 @@ namespace SpecBoy
 				// LD SP, HL
 				case 0xf9:
 					SP = HL;
-					Cycles++;
+					CycleTick();
 					break;
 
 				// LD A, (u16)
@@ -568,7 +556,7 @@ namespace SpecBoy
 					throw new InvalidOperationException($"Unimplemented instruction {opcode:X2} at PC: {PC:X4}");
 			}
 
-			return cycles;
+			return Cycles;
 		}
 
 		private void DecodeCB()
@@ -639,8 +627,11 @@ namespace SpecBoy
 			}
 		}
 
-		private void OnCycleUpdate()
+		// INCs cycles and ticks all components
+		private void CycleTick()
 		{
+			Cycles++;
+
 			// Check DMA
 			mem.DoDma();
 
@@ -760,7 +751,7 @@ namespace SpecBoy
 		private byte ReadByte(int address)
 		{
 			byte value = mem.ReadByte(address);
-			Cycles++;
+			CycleTick();
 			return value;
 		}
 
@@ -773,7 +764,7 @@ namespace SpecBoy
 		private void WriteByte(int address, byte value)
 		{
 			mem.WriteByte(address, value);
-			Cycles++;
+			CycleTick();
 		}
 
 		private void WriteWord(int address, ushort value)
@@ -809,20 +800,20 @@ namespace SpecBoy
 		private ushort IncR16(int r16)
 		{
 			ushort value = (ushort)(GetR16(r16) + 1);
-			Cycles++;
+			CycleTick();
 			return value;
 		}
 
 		private ushort DecR16(int r16)
 		{
 			ushort value = (ushort)(GetR16(r16) - 1);
-			Cycles++;
+			CycleTick();
 			return value;
 		}
 
 		private void Push(ushort address)
 		{
-			Cycles++;
+			CycleTick();
 			SP--;
 			WriteByte(SP, (byte)(address >> 8));
 			SP--;
@@ -862,7 +853,7 @@ namespace SpecBoy
 			if (opcode == 0xc3 || TestCondition(opcode))
 			{
 				PC = address;
-				Cycles++;
+				CycleTick();
 			}
 		}
 
@@ -874,7 +865,7 @@ namespace SpecBoy
 			if (opcode == 0x18 || TestCondition(opcode))
 			{
 				PC += (ushort)offset;
-				Cycles++;
+				CycleTick();
 			}
 		}
 
@@ -886,18 +877,18 @@ namespace SpecBoy
 			}			
 			else if (TestCondition(opcode))
 			{
-				Cycles++;
+				CycleTick();
 				PC = Pop();
 			}
 
-			Cycles++;
+			CycleTick();
 		}
 
 		private void Reti()
 		{
 			ime = true;
 			PC = Pop();
-			Cycles++;
+			CycleTick();
 		}
 
 		private bool TestCondition(int opcode) =>
@@ -977,7 +968,7 @@ namespace SpecBoy
 
 			HL = result;
 
-			Cycles++;
+			CycleTick();
 		}
 
 		private void LdHlSp(byte i8)
@@ -993,7 +984,7 @@ namespace SpecBoy
 
 			HL = result;
 
-			Cycles++;
+			CycleTick();
 		}
 
 		private void AddSp(byte i8)
@@ -1009,8 +1000,8 @@ namespace SpecBoy
 
 			SP = result;
 
-			Cycles++;
-			Cycles++;
+			CycleTick();
+			CycleTick();
 		}
 
 		private byte Cp(byte value)
@@ -1194,13 +1185,13 @@ namespace SpecBoy
 				if (ime)
 				{
 					// 6M (24T) cycles in total (inc. fetch) to service interrupt
-					Cycles++;
+					CycleTick();
 					ime = false;
 
 					// Write MSB of PC to (SP); this can effect decisions below if written to IE
 					SP--;
 					WriteByte(SP, (byte)(PC >> 8));
-					Cycles++;
+					CycleTick();
 
 					// Check which interrupt to service, in priority order
 					if (Interrupts.VBlankIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.VBlankIeBit))
@@ -1235,7 +1226,7 @@ namespace SpecBoy
 
 					// Jump to IRQ vector
 					PC = IrqVector;
-					Cycles++;
+					CycleTick();
 				}
 			}
 		}
