@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.MemoryMappedFiles;
-using System.Security.Cryptography;
+using System.Linq;
 
 namespace SpecBoy
 {
@@ -10,13 +10,11 @@ namespace SpecBoy
 		public ReadDelegate ReadByte;
 		public WriteDelegate WriteByte;
 
+		private readonly int[] ramSizes = { 0, 2, 8, 32, 128, 64 };
 		private readonly int bankLimitMask;
-		//private readonly byte[] rom;
-		//private readonly MemoryMappedFile romFile;
-		private readonly MemoryMappedViewAccessor rom;
-		//private readonly byte[] ram;
-		//private readonly MemoryMappedFile ramFile;
-		private readonly MemoryMappedViewAccessor ram;
+		private readonly byte[] rom;
+
+		private MemoryMappedViewAccessor ram;
 
 		private int romBank;
 		private int ramBank;
@@ -25,6 +23,8 @@ namespace SpecBoy
 		private int ramSize;
 		private bool bankingMode;
 		private bool ramEnabled;
+		private bool hasBattery;
+		private bool hasRam;
 
 		public delegate byte ReadDelegate(int address);
 		public delegate void WriteDelegate(int address, byte value);
@@ -64,41 +64,107 @@ namespace SpecBoy
 
 		public Cartridge(string romName)
 		{
-			rom = MemoryMappedFile.CreateFromFile(romName, FileMode.Open)
-				.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
-			//rom = File.ReadAllBytes(romName);
-
-			ram = MemoryMappedFile.CreateNew("sram.dat", 0x20000)
-				.CreateViewAccessor(0, 0, MemoryMappedFileAccess.ReadWrite);
-			//ram = new byte[0x20000];
-
-			romBank = 1;
+			rom = File.ReadAllBytes(romName);
 
 			GetRomInfo();
+			InitiateRam(romName);
+
+			romBank = 1;
 			bankLimitMask = (romSize >> 4) - 1;
 		}
+		private void GetRomInfo()
+		{
+			Console.Write("ROM name: ");
+			for (int i = 0; i < 16; i++)
+			{
+				char c = (char)rom[0x0134 + i];
+				if (c == 0)
+				{
+					break;
+				}
+				Console.Write(c);
+			}
 
-		//public byte ReadByteRomOnly(int address) => rom[address];
-		public byte ReadByteRomOnly(int address) => rom.ReadByte(address);
+			Console.WriteLine();
 
-		public void WriteByteRomOnly(int address, byte value)
+			CartType cartType = (CartType)rom[0x0147];
+			string typeString = Enum.GetName(typeof(CartType), cartType);
+			Console.WriteLine($"ROM type: {typeString.ToUpper()} ({(int)cartType})");
+
+			romSize = 0x20 << rom[0x0148];
+			Console.WriteLine($"ROM size: {romSize}K ({romSize >> 4} banks)");
+
+			hasRam = typeString.Contains("Ram");
+			ramSize = ramSizes[rom[0x0149]];
+			Console.WriteLine($"Has RAM: {(hasRam ? $"Yes\nRAM size: {ramSize}K" : "No")}");
+
+			hasBattery = typeString.Contains("Battery");
+			Console.WriteLine($"Has battery: {(hasBattery ? "Yes" : "No")}");
+
+			switch (typeString)
+			{
+				case var type when type.Contains("Rom"):
+					ReadByte = ReadByteRomOnly;
+					WriteByte = WriteByteRomOnly;
+					break;
+
+				case var type when type.Contains("Mbc1"):
+					ReadByte = ReadByteMbc1;
+					WriteByte = WriteByteMbc1;
+					break;
+
+				case var type when type.Contains("Mbc3"):
+					ReadByte = ReadByteMbc3;
+					WriteByte = WriteByteMbc3;
+					break;
+
+				default:
+					break;
+			}
+		}
+
+		private void InitiateRam(string romName)
+		{
+			if (hasRam)
+			{
+				MemoryMappedFile mmf;
+
+				if (hasBattery)
+				{
+					mmf = MemoryMappedFile.CreateFromFile(romName.Remove(romName.LastIndexOf(".")) + ".sav", FileMode.OpenOrCreate, null, ramSize * 1024);
+				}
+				else
+				{
+					mmf = MemoryMappedFile.CreateNew(null, ramSize * 1024);
+				}
+
+				ram = mmf.CreateViewAccessor(0, 0, MemoryMappedFileAccess.ReadWrite);
+			}
+		}
+
+		private byte ReadByteRomOnly(int address)
+		{
+			return rom[address];
+		}
+
+		private void WriteByteRomOnly(int address, byte value)
 		{
 			return;
 		}
 
-		public byte ReadByteMbc1(int address)
+		private byte ReadByteMbc1(int address)
 		{
 			// Split banked and non-banked for less cpu work during address calcs
 			return address switch
 			{
 				// ROM bank0 - Non-banked
-				var n when n <= 0x3fff && !bankingMode => rom.ReadByte(address),
+				var n when n <= 0x3fff && !bankingMode => rom[address],
 
 				// ROM bank0 - Banked
-				var n when n <= 0x3fff => rom.ReadByte(0x4000 * (bankHighBits & bankLimitMask) + address),
+				var n when n <= 0x3fff => rom[0x4000 * (bankHighBits & bankLimitMask) + address],
 
 				// ROM bank n
-				var n when n <= 0x7fff => rom.ReadByte(0x4000 * ((romBank | bankHighBits) & bankLimitMask) + (address & 0x3fff)),
+				var n when n <= 0x7fff => rom[0x4000 * ((romBank | bankHighBits) & bankLimitMask) + (address & 0x3fff)],
 
 				// Cartridge RAM - Non-banked
 				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled && !bankingMode => ram.ReadByte(address & 0x1fff),
@@ -110,13 +176,13 @@ namespace SpecBoy
 			};
 		}
 
-		public void WriteByteMbc1(int address, byte value)
+		private void WriteByteMbc1(int address, byte value)
 		{
 			switch (address)
 			{
 				// Enable/Disable RAM
 				case var n when n <= 0x1fff:
-					ramEnabled = (value & 0x0f) == 0x0a;
+					ramEnabled = hasRam && (value & 0x0f) == 0x0a;
 					break;
 
 				// ROM bank n
@@ -132,7 +198,7 @@ namespace SpecBoy
 
 				// RAM bank or ROM bank high bits
 				case var n when n <= 0x5fff:
-					if (ramSize >= 3)
+					if (ramSize >= 32)
 					{
 						ramBank = value & 3;
 					}
@@ -160,13 +226,13 @@ namespace SpecBoy
 			}
 		}
 
-		public byte ReadByteMbc3(int address) => address switch
+		private byte ReadByteMbc3(int address) => address switch
 		{
 			// ROM bank0
-			var n when n <= 0x3fff => rom.ReadByte(address),
+			var n when n <= 0x3fff => rom[address],
 
 			// ROM bank n
-			var n when n <= 0x7fff => rom.ReadByte(0x4000 * romBank + (address & 0x3fff)),
+			var n when n <= 0x7fff => rom[romBank + (address & 0x3fff)],
 
 			// Cartridge RAM
 			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram.ReadByte(ramBank + (address & 0x1fff)),
@@ -174,13 +240,13 @@ namespace SpecBoy
 			_ => 0xff,
 		};
 
-		public void WriteByteMbc3(int address, byte value)
+		private void WriteByteMbc3(int address, byte value)
 		{
 			switch (address)
 			{
 				// Enable/Disable RAM
 				case var n when n <= 0x1fff:
-					ramEnabled = (value & 0x0f) == 0x0a;
+					ramEnabled = hasRam && (value & 0x0f) == 0x0a;
 					break;
 
 				// ROM bank n
@@ -192,11 +258,16 @@ namespace SpecBoy
 						romBank++;
 					}
 
+					romBank *= 0x4000;
+
 					break;
 
 				// RAM bank
 				case var n when n <= 0x5fff:
-					ramBank = value * 0x2000;
+					if (ramSize >= 32)
+					{
+						ramBank = (value & 3) * 0x2000;
+					}
 					break;
 
 				// RAM
@@ -208,95 +279,5 @@ namespace SpecBoy
 					break;
 			}
 		}
-
-		public void GetRomInfo()
-		{
-			Console.Write("ROM name: ");
-			for (int i = 0; i < 16; i++)
-			{
-				//Console.Write((char)rom[0x0134 + i]);
-				Console.Write((char)rom.ReadByte(0x0134 + i));
-			}
-
-			//CartType cartType = (CartType)rom[0x147];
-			CartType cartType = (CartType)rom.ReadByte(0x147);
-			Console.WriteLine($"\nROM type: { Enum.GetName(typeof(CartType), cartType).ToUpper() } ({(int)cartType})");
-
-			switch (cartType)
-			{
-				case CartType.RomOnly:
-				case CartType.RomRam:
-				case CartType.RomRamBattery:
-					ReadByte = ReadByteRomOnly;
-					WriteByte = WriteByteRomOnly;
-					break;
-
-				case CartType.Mbc1:
-				case CartType.Mbc1Ram:
-				case CartType.Mbc1RamBattery:
-					ReadByte = ReadByteMbc1;
-					WriteByte = WriteByteMbc1;
-					break;
-
-				case CartType.Mbc2:
-					break;
-				case CartType.Mbc2Battery:
-					break;
-				case CartType.Mmm01:
-					break;
-				case CartType.Mmm01Ram:
-					break;
-				case CartType.Mmm01RamBattery:
-					break;
-
-				case CartType.Mbc3TimerBattery:
-				case CartType.Mbc3TimerRamBattery:
-				case CartType.Mbc3:
-				case CartType.Mbc3Ram:
-				case CartType.Mbc3RamBattery:
-					ReadByte = ReadByteMbc3;
-					WriteByte = WriteByteMbc3;
-					break;
-
-				case CartType.Mbc4:
-					break;
-				case CartType.Mbc4Ram:
-					break;
-				case CartType.Mbc4RamBattery:
-					break;
-				case CartType.Mbc5:
-					break;
-				case CartType.Mbc5Ram:
-					break;
-				case CartType.Mbc5RamBattery:
-					break;
-				case CartType.Mbc5Rumble:
-					break;
-				case CartType.Mbc5RumbleRam:
-					break;
-				case CartType.Mbc5RumbleRamBattery:
-					break;
-				case CartType.PocketCamera:
-					break;
-				case CartType.BandaiTama5:
-					break;
-				case CartType.HuC3:
-					break;
-				case CartType.HuC1RamBattery:
-					break;
-
-				default:
-					Console.WriteLine("Unknown");
-					break;
-			}
-
-			//romSize = 0x20 << rom[0x0148];
-			romSize = 0x20 << rom.ReadByte(0x148);
-			Console.WriteLine($"ROM size: {romSize}K ({romSize >> 4} banks)");
-
-			//ramSize = rom[0x149];
-			ramSize = rom.ReadByte(0x149);
-		}
 	}
 }
-
