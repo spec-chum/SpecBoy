@@ -1,6 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Threading.Tasks;
 using SFML.Graphics;
 using SFML.Window;
 
@@ -23,7 +21,7 @@ namespace SpecBoy
 		public Gameboy(string romName)
 		{
 			window = new RenderWindow(new VideoMode(160 * scale, 144 * scale), "SpecBoy", Styles.Default);
-			window.SetFramerateLimit(0);
+			window.SetFramerateLimit(60);
 			//window.SetVerticalSyncEnabled(false);
 
 			timers = new Timers();
@@ -45,18 +43,25 @@ namespace SpecBoy
 			{
 				long cyclesThisFrame = 0;
 				long currentCycles = 0;
-
+								
 				window.DispatchEvents();
 
-				while (!ppu.HitVSync)
+				long prevPC = 0;
+
+				while (cyclesThisFrame < (70224 / 4) && !ppu.HitVSync)
 				{
 					if (logging)
 					{
-						Console.WriteLine($"A: {cpu.A:X2} F: {cpu.F:X2}" +
-							$" B: {cpu.B:X2} C: {cpu.C:X2} D: {cpu.D:X2} E: {cpu.E:X2} H: {cpu.H:X2} L: {cpu.L:X2}" +
-							$" SP: {cpu.SP:X4} PC: 00:{cpu.PC:X4}" +
-							$" ({mem.ReadByte(cpu.PC, true):X2} {mem.ReadByte(cpu.PC + 1, true):X2}" +
-							$" {mem.ReadByte(cpu.PC + 2, true):X2} {mem.ReadByte(cpu.PC + 3, true):X2})");
+						if (prevPC != cpu.PC)
+						{
+							Console.WriteLine($"A: {cpu.A:X2} F: {cpu.F:X2}" +
+								$" B: {cpu.B:X2} C: {cpu.C:X2} D: {cpu.D:X2} E: {cpu.E:X2} H: {cpu.H:X2} L: {cpu.L:X2}" +
+								$" SP: {cpu.SP:X4} PC: 00:{cpu.PC:X4}" +
+								$" ({mem.ReadByte(cpu.PC, true):X2} {mem.ReadByte(cpu.PC + 1, true):X2}" +
+								$" {mem.ReadByte(cpu.PC + 2, true):X2} {mem.ReadByte(cpu.PC + 3, true):X2})");
+						}
+
+						prevPC = cpu.PC;
 					}
 
 					currentCycles = cpu.Execute();
