@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace SpecBoy
 {
@@ -8,6 +9,8 @@ namespace SpecBoy
 		private readonly Ppu ppu;
 		private readonly Joypad joypad;
 		private readonly Cartridge cartridge;
+
+		private readonly byte[] bootRom;
 
 		private int dmaCycles;
 		private ushort dmaSrcAddr;
@@ -22,11 +25,23 @@ namespace SpecBoy
 
 			WRam = new byte[0x2000];
 			HRam = new byte[0x7f];
+
+			try
+			{
+				BootRomEnabled = true;
+				bootRom = File.ReadAllBytes("DMG_ROM.bin");
+			}
+			catch (FileNotFoundException)
+			{
+				BootRomEnabled = false;
+			}
 		}
 
 		public byte[] WRam { get; }
 
 		public byte[] HRam { get; }
+
+		public bool BootRomEnabled { get; private set; }
 
 		// Called from OnCycleUpdate in CPU
 		public void DoDma()
@@ -50,8 +65,10 @@ namespace SpecBoy
 
 		public byte ReadByte(int address, bool bypass = false)
 		{
-			// External bus: $0000-$7FFF, $A000-$FDFF
-			// Video ram bus: $8000-$9FFF
+			if (BootRomEnabled && address < 0x100)
+			{
+				return bootRom[address];
+			}
 
 			if (!bypass && dmaCycles != 0 && address < 0xff00)
 			{
@@ -69,6 +86,8 @@ namespace SpecBoy
 
 				static int busType(int addr) => addr switch
 				{
+					// External bus: $0000-$7FFF, $A000-$FDFF
+					// Video ram bus: $8000-$9FFF
 					var n when n <= 0x7fff || (n >= 0xa000 && n <= 0xfdff) => 0,
 					var n when n >= 0x8000 && n <= 0x9fff => 1,
 					_ => 2,
@@ -143,7 +162,10 @@ namespace SpecBoy
 			{
 				// ROM
 				case var n when n <= 0x7fff:
-					cartridge.WriteByte(address, value);
+					if (!BootRomEnabled)
+					{
+						cartridge.WriteByte(address, value);
+					}
 					break;
 
 				// VRAM
@@ -245,6 +267,11 @@ namespace SpecBoy
 
 				case 0xff49:
 					ppu.Obp1 = value;
+					break;
+
+				// Boot rom
+				case 0xff50:
+					BootRomEnabled = false;
 					break;
 
 				case 0xff4a:

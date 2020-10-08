@@ -34,17 +34,20 @@ namespace SpecBoy
 			this.timers = timers;
 			this.ppu = ppu;
 
-			AF = 0x01b0;
-			BC = 0x0013;
-			DE = 0x00d8;
-			HL = 0x014d;
-			PC = 0x0100;
-			SP = 0xfffe;
+			if (!mem.BootRomEnabled)
+			{
+				AF = 0x01b0;
+				BC = 0x0013;
+				DE = 0x00d8;
+				HL = 0x014d;
+				PC = 0x0100;
+				SP = 0xfffe;
 
-			ppu.Lcdc = 0x91;
-			ppu.Bgp = 0xfc;
-			ppu.Obp0 = 0xff;
-			ppu.Obp1 = 0xff;
+				ppu.Lcdc = 0x91;
+				ppu.Bgp = 0xfc;
+				ppu.Obp0 = 0xff;
+				ppu.Obp1 = 0xff;
+			}
 		}
 
 		// Only really needed for PUSH AF and POP AF
