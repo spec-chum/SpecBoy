@@ -96,6 +96,12 @@ namespace SpecBoy
 
 			hasRam = typeString.Contains("Ram");
 			ramSize = ramSizes[rom[0x0149]];
+
+			if (ramSize == 0)
+			{
+				hasRam = false;
+			}
+
 			Console.WriteLine($"Has RAM: {(hasRam ? $"Yes\nRAM size: {ramSize}K" : "No")}");
 
 			hasBattery = typeString.Contains("Battery");
