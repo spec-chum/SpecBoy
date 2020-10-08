@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace SpecBoy
+﻿namespace SpecBoy
 {
 	class Memory
 	{
@@ -20,13 +18,10 @@ namespace SpecBoy
 			this.joypad = joypad;
 			this.cartridge = cartridge;
 
-			WRam = new byte[0x2000];
-			HRam = new byte[0x7f];
+			Mem = new byte[0x10000];
 		}
 
-		public byte[] WRam { get; }
-
-		public byte[] HRam { get; }
+		public byte[] Mem { get; }
 
 		// Called from OnCycleUpdate in CPU
 		public void DoDma()
@@ -86,8 +81,11 @@ namespace SpecBoy
 				// External RAM
 				var n when n <= 0xbfff => cartridge.ReadByte(address),
 
-				// RAM and mirrors
-				var n when n <= 0xfdff => WRam[address & 0x1fff],
+				// Work RAM banks
+				var n when n <= 0xdfff => Mem[address],
+
+				// Work RAM mirrors
+				var n when n <= 0xfdff => Mem[address - 0x2000],
 
 				// OAM
 				var n when n <= 0xfe9f => ppu.Oam[address & 0xff],
@@ -96,42 +94,71 @@ namespace SpecBoy
 				var n when n <= 0xfeff => 0,
 
 				// IO Registers
-				var n when n >= 0xff00 && n <= 0xff7f => address switch
-				{
-					// JOYPAD
-					0xff00 => joypad.JoyP,
+				0xff00 => joypad.JoyP,
 
-					// TIMERS
-					0xff04 => timers.Div,
-					0xff05 => timers.Tima,
-					0xff06 => timers.Tma,
-					0xff07 => (byte)(timers.Tac | 0xf8),
+				// Serial Transfer Control
+				0xff02 => (byte)(Mem[address] | 0x7e),
 
-					// IF
-					0xff0f => (byte)(Interrupts.IF | 0xe0),
+				// Unused
+				0xff03 => 0xff,
 
-					// PPU
-					0xff40 => ppu.Lcdc,
-					0xff41 => (byte)(ppu.Stat | 0x80),
-					0xff42 => ppu.Scy,
-					0xff43 => ppu.Scx,
-					0xff44 => ppu.Ly,
-					0xff45 => ppu.Lyc,
-					0xff46 => (byte)(dmaSrcAddr >> 8),
-					0xff47 => ppu.Bgp,
-					0xff48 => ppu.Obp0,
-					0xff49 => ppu.Obp1,
-					0xff4a => ppu.Wy,
-					0xff4b => ppu.Wx,
+				// TIMERS
+				0xff04 => timers.Div,
+				0xff05 => timers.Tima,
+				0xff06 => timers.Tma,
+				0xff07 => (byte)(timers.Tac | 0xf8),
 
-					_ => 0xff,
-				},
+				// Unused
+				var n when n <= 0xff0e => 0xff,
 
-				var n when n <= 0xfffe => HRam[address & 0x7f],
+				0xff0f => (byte)(Interrupts.IF | 0xe0),
+
+				// NR10
+				0xff10 => (byte)(Mem[address] | 0x80),
+				0xff11 => 0xff,
+				// Unused
+				0xff15 => 0xff,
+				// NR30
+				0xff1a => (byte)(Mem[address] | 0x7f),
+				// NR32
+				0xff1c => (byte)(Mem[address] | 0x9f),
+				// Unused
+				0xff1f => 0xff,
+				// NR41
+				0xff20 => (byte)(Mem[address] | 0xc0),
+				// NR44
+				0xff23 => (byte)(Mem[address] | 0x3f),
+				// NR52
+				0xff26 => (byte)(Mem[address] | 0x70),
+
+				// Unused
+				0xff27 => 0xff,
+				0xff28 => 0xff,
+				0xff29 => 0xff,
+
+				// PPU
+				0xff40 => ppu.Lcdc,
+				0xff41 => (byte)(ppu.Stat | 0x80),
+				0xff42 => ppu.Scy,
+				0xff43 => ppu.Scx,
+				0xff44 => ppu.Ly,
+				0xff45 => ppu.Lyc,
+				0xff46 => (byte)(dmaSrcAddr >> 8),
+				0xff47 => ppu.Bgp,
+				0xff48 => ppu.Obp0,
+				0xff49 => ppu.Obp1,
+				0xff4a => ppu.Wy,
+				0xff4b => ppu.Wx,
+
+				// Unused
+				var n when n >= 0xff4c && n <= 0xff7f => 0xff,
+
+				// High Ram
+				var n when n <= 0xfffe => Mem[address],
 
 				0xffff => Interrupts.IE,
 
-				_ => 0xff,
+				_ => Mem[address]
 			};
 		}
 
@@ -156,9 +183,14 @@ namespace SpecBoy
 					cartridge.WriteByte(address, value);
 					break;
 
-				// RAM and mirrors
+				// Work RAM
+				case var n when n <= 0xdfff:
+					Mem[address] = value;
+					break;
+
+				// Work RAM mirrors
 				case var n when n <= 0xfdff:
-					WRam[address & 0x1fff] = value;
+					Mem[address - 0x2000] = value;
 					break;
 
 				// OAM
@@ -170,7 +202,6 @@ namespace SpecBoy
 
 					break;
 
-				// Joypad
 				case 0xff00:
 					joypad.JoyP = value;
 					break;
@@ -179,15 +210,12 @@ namespace SpecBoy
 				case 0xff04:
 					timers.Div = 0;
 					break;
-
 				case 0xff05:
 					timers.Tima = value;
 					break;
-
 				case 0xff06:
 					timers.Tma = value;
 					break;
-
 				case 0xff07:
 					timers.Tac = value;
 					break;
@@ -205,19 +233,15 @@ namespace SpecBoy
 				case 0xff40:
 					ppu.Lcdc = value;
 					break;
-
 				case 0xff41:
 					ppu.Stat = value;
 					break;
-
 				case 0xff42:
 					ppu.Scy = value;
 					break;
-
 				case 0xff43:
 					ppu.Scx = value;
 					break;
-
 				case 0xff45:
 					ppu.Lyc = value;
 					break;
@@ -238,25 +262,22 @@ namespace SpecBoy
 				case 0xff47:
 					ppu.Bgp = value;
 					break;
-
 				case 0xff48:
 					ppu.Obp0 = value;
 					break;
-
 				case 0xff49:
 					ppu.Obp1 = value;
 					break;
-
 				case 0xff4a:
 					ppu.Wy = value;
 					break;
-
 				case 0xff4b:
 					ppu.Wx = value;
 					break;
 
+				// HRam
 				case var n when n >= 0xff80 && n <= 0xfffe:
-					HRam[address & 0x7f] = value;
+					Mem[address] = value;
 					break;
 
 				case 0xffff:
@@ -264,6 +285,7 @@ namespace SpecBoy
 					break;
 
 				default:
+					Mem[address] = value;
 					break;
 			}
 		}
