@@ -40,6 +40,7 @@ namespace SpecBoy
 
 		private int currentCycle;
 		private byte winY;
+		private bool statIntRequest;
 
 		public Ppu(RenderWindow window, int scale)
 		{
@@ -83,9 +84,12 @@ namespace SpecBoy
 
 				lcdc.SetByte(value);
 
-				if (!oldEnabled && lcdc.lcdEnabled)
+				// LCD being switched off?
+				if (oldEnabled && !lcdc.lcdEnabled)
 				{
+					// Reset everything
 					Ly = 0;
+					Lyc = 0;
 					currentCycle = 0;
 					stat.currentMode = Mode.HBlank;
 				}
@@ -102,6 +106,7 @@ namespace SpecBoy
 			set
 			{
 				stat.SetByte(value);
+				UpdateStat(stat.currentMode);
 			}
 		}
 
@@ -170,7 +175,7 @@ namespace SpecBoy
 							ChangeMode(Mode.OAM);
 						}
 
-						UpdateCoincidence();
+						UpdateStat(Mode.HBlank);
 					}
 
 					break;
@@ -188,7 +193,7 @@ namespace SpecBoy
 							Ly = 0;
 						}
 
-						UpdateCoincidence();
+						UpdateStat(Mode.VBlank);
 					}
 
 					break;
@@ -223,28 +228,28 @@ namespace SpecBoy
 
 					if (stat.hBlankInt)
 					{
-						Interrupts.StatIrqReq = true;
+						UpdateStat(Mode.HBlank);
 					}
 
 					break;
 
 				case Mode.VBlank:
 					HitVSync = true;
+					RenderFrame();
 
 					winY = 0;
-					RenderFrame();
 
 					Interrupts.VBlankIrqReq = true;
 
-					// Also fire OAM interrupt if bit set
-					if (stat.oamInt)
-					{
-						Interrupts.StatIrqReq = true;
-					}
-
 					if (stat.vBlankInt)
 					{
-						Interrupts.StatIrqReq = true;
+						UpdateStat(Mode.VBlank);
+					}
+
+					// Also fire OAM interrupt if set
+					if (stat.oamInt)
+					{
+						UpdateStat(Mode.OAM);
 					}
 
 					break;
@@ -252,7 +257,7 @@ namespace SpecBoy
 				case Mode.OAM:
 					if (stat.oamInt)
 					{
-						Interrupts.StatIrqReq = true;
+						UpdateStat(Mode.OAM);
 					}
 
 					break;
@@ -262,11 +267,33 @@ namespace SpecBoy
 			}
 		}
 
-		private void UpdateCoincidence()
+		private void UpdateStat(Mode mode)
 		{
+			if (!lcdc.lcdEnabled)
+			{
+				return;
+			}
+
 			stat.coincidenceFlag = Ly == Lyc;
 
-			if (stat.coincidenceFlag && stat.coincidenceInt)
+			bool oldIntRequest = statIntRequest;
+
+			statIntRequest = mode switch
+			{
+				Mode.HBlank => stat.hBlankInt,
+				Mode.VBlank => stat.vBlankInt,
+				Mode.OAM => stat.oamInt,
+				_ => false,
+			};
+
+			// Test for Ly == Lyc if requested
+			if (stat.coincidenceInt && stat.coincidenceFlag)
+			{
+				statIntRequest = true;
+			}
+
+			// Only fire on rising edge (STAT IRQ blocking)
+			if (statIntRequest && !oldIntRequest)
 			{
 				Interrupts.StatIrqReq = true;
 			}

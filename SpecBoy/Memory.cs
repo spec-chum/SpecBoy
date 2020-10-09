@@ -27,7 +27,7 @@ namespace SpecBoy
 			try
 			{
 				BootRomEnabled = true;
-				bootRom = File.ReadAllBytes("DMG_ROM.bin");
+				bootRom = File.ReadAllBytes("DMG_ROM.bi2n");
 			}
 			catch (FileNotFoundException)
 			{
