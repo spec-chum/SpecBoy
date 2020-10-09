@@ -66,9 +66,9 @@ namespace SpecBoy
 			LCDTransfer
 		}
 
-		public byte[] VRam { get; }
+		private byte[] VRam { get; }
 
-		public byte[] Oam { get; }
+		private byte[] Oam { get; }
 
 		public byte Lcdc
 		{
@@ -79,7 +79,16 @@ namespace SpecBoy
 
 			set
 			{
+				bool oldEnabled = lcdc.lcdEnabled;
+
 				lcdc.SetByte(value);
+
+				if (!oldEnabled && lcdc.lcdEnabled)
+				{
+					Ly = 0;
+					currentCycle = 0;
+					stat.currentMode = Mode.HBlank;
+				}
 			}
 		}
 
@@ -98,8 +107,49 @@ namespace SpecBoy
 
 		public byte Ly { get; private set; }
 
+		public byte ReadVRam(int address)
+		{
+			if (stat.currentMode == Mode.LCDTransfer)
+			{
+				return 0xff;
+			}
+
+			return VRam[address];
+		}
+
+		public void WriteVRam(int address, byte value)
+		{
+			if (stat.currentMode != Mode.LCDTransfer)
+			{
+				VRam[address] = value;
+			}
+		}		
+		
+		public byte ReadOam(int address)
+		{
+			if (stat.currentMode == Mode.LCDTransfer || stat.currentMode == Mode.OAM)
+			{
+				return 0xff;
+			}
+
+			return Oam[address];
+		}
+
+		public void WriteOam(int address, byte value, bool bypass = false)
+		{
+			if (bypass || stat.currentMode != Mode.LCDTransfer && stat.currentMode != Mode.OAM)
+			{
+				Oam[address] = value;
+			}
+		}
+
 		public void Tick()
 		{
+			if (!lcdc.lcdEnabled)
+			{
+				return;
+			}
+
 			currentCycle += 4;
 
 			switch (stat.currentMode)

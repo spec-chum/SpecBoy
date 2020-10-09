@@ -39,7 +39,7 @@ namespace SpecBoy
 
 		public bool BootRomEnabled { get; private set; }
 
-		// Called from OnCycleUpdate in CPU
+		// Called from CycleTick() in CPU
 		public void DoDma()
 		{
 			// Check if any DMA in progress
@@ -53,7 +53,7 @@ namespace SpecBoy
 			{
 				byte index = (byte)(160 - dmaCycles);
 				dmaLastByteWritten = ReadByte(dmaSrcAddr + index, true);
-				ppu.Oam[index] = dmaLastByteWritten;
+				ppu.WriteOam(index, dmaLastByteWritten, true);
 			}
 
 			dmaCycles--;
@@ -96,7 +96,7 @@ namespace SpecBoy
 				var n when n <= 0x7fff => cartridge.ReadByte(address),
 
 				// VRAM
-				var n when n <= 0x9fff => ppu.VRam[address & 0x1fff],
+				var n when n <= 0x9fff => ppu.ReadVRam(address & 0x1fff),
 
 				// External RAM
 				var n when n <= 0xbfff => cartridge.ReadByte(address),
@@ -108,7 +108,7 @@ namespace SpecBoy
 				var n when n <= 0xfdff => Mem[address - 0x2000],
 
 				// OAM
-				var n when n <= 0xfe9f => ppu.Oam[address & 0xff],
+				var n when n <= 0xfe9f => ppu.ReadOam(address & 0xff),
 
 				// Not usable, but returns 0 not 0xff
 				var n when n <= 0xfeff => 0,
@@ -122,7 +122,7 @@ namespace SpecBoy
 				// Unused
 				0xff03 => 0xff,
 
-				// TIMERS
+				// Timers
 				0xff04 => timers.Div,
 				0xff05 => timers.Tima,
 				0xff06 => timers.Tma,
@@ -173,7 +173,7 @@ namespace SpecBoy
 				// Unused
 				var n when n >= 0xff4c && n <= 0xff7f => 0xff,
 
-				// High Ram
+				// HRAM
 				var n when n <= 0xfffe => Mem[address],
 
 				0xffff => Interrupts.IE,
@@ -198,7 +198,7 @@ namespace SpecBoy
 
 				// VRAM
 				case var n when n <= 0x9fff:
-					ppu.VRam[address & 0x1fff] = value;
+					ppu.WriteVRam(address & 0x1fff, value);
 					break;
 
 				// External RAM
@@ -220,7 +220,7 @@ namespace SpecBoy
 				case var n when n <= 0xfe9f:
 					if (dmaCycles == 0 && dmaCycles <= 160)
 					{
-						ppu.Oam[address & 0xff] = value;
+						ppu.WriteOam(address & 0xff, value);
 					}
 
 					break;
@@ -292,7 +292,7 @@ namespace SpecBoy
 					ppu.Obp1 = value;
 					break;
 
-				// Boot rom
+				// Boot ROM
 				case 0xff50:
 					BootRomEnabled = false;
 					break;
@@ -304,7 +304,7 @@ namespace SpecBoy
 					ppu.Wx = value;
 					break;
 
-				// HRam
+				// HRAM
 				case var n when n >= 0xff80 && n <= 0xfffe:
 					Mem[address] = value;
 					break;
