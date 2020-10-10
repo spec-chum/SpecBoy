@@ -9,7 +9,15 @@ using SfmlSprite = SFML.Graphics.Sprite;
 
 namespace SpecBoy
 {
-	partial class Ppu
+	enum Mode
+	{
+		HBlank,
+		VBlank,
+		OAM,
+		LCDTransfer
+	}
+
+	class Ppu
 	{
 		private const int ScreenWidth = 160;
 		private const int ScreenHeight = 144;
@@ -57,15 +65,7 @@ namespace SpecBoy
 				Scale = new Vector2f(scale, scale)
 			};
 
-			stat.currentMode = Mode.OAM;
-		}
-
-		private enum Mode
-		{
-			HBlank,
-			VBlank,
-			OAM,
-			LCDTransfer
+			stat.CurrentMode = Mode.OAM;
 		}
 
 		private byte[] VRam { get; }
@@ -81,21 +81,21 @@ namespace SpecBoy
 
 			set
 			{
-				bool oldEnabled = lcdc.lcdEnabled;
+				bool oldEnabled = lcdc.LcdEnabled;
 
 				lcdc.SetByte(value);
 
 				// LCD being switched off?
-				if (oldEnabled && !lcdc.lcdEnabled)
+				if (oldEnabled && !lcdc.LcdEnabled)
 				{
 					// Reset state
 					Ly = 0;
 					currentCycle = 0;
-					stat.currentMode = Mode.HBlank;
+					stat.CurrentMode = Mode.HBlank;
 				}
 				else
 				{
-					UpdateStat(stat.currentMode);
+					UpdateStat(stat.CurrentMode);
 				}
 			}
 		}
@@ -104,7 +104,7 @@ namespace SpecBoy
 		{
 			get
 			{
-				UpdateStat(stat.currentMode);
+				UpdateStat(stat.CurrentMode);
 				return stat.GetByte();
 			}
 
@@ -113,7 +113,7 @@ namespace SpecBoy
 				stat.SetByte(value);
 
 				// Might set an interrupt we need to fire, so check for that
-				UpdateStat(stat.currentMode);
+				UpdateStat(stat.CurrentMode);
 			}
 		}
 
@@ -123,7 +123,7 @@ namespace SpecBoy
 			private set
 			{
 				ly = value;
-				UpdateStat(stat.currentMode);
+				UpdateStat(stat.CurrentMode);
 			}
 		}
 
@@ -133,13 +133,13 @@ namespace SpecBoy
 			set
 			{
 				lyc = value;
-				UpdateStat(stat.currentMode);
+				UpdateStat(stat.CurrentMode);
 			}
 		}
 
 		public byte ReadVRam(int address)
 		{
-			if (stat.currentMode == Mode.LCDTransfer)
+			if (stat.CurrentMode == Mode.LCDTransfer)
 			{
 				return 0xff;
 			}
@@ -149,7 +149,7 @@ namespace SpecBoy
 
 		public void WriteVRam(int address, byte value)
 		{
-			if (stat.currentMode != Mode.LCDTransfer)
+			if (stat.CurrentMode != Mode.LCDTransfer)
 			{
 				VRam[address] = value;
 			}
@@ -157,7 +157,7 @@ namespace SpecBoy
 
 		public byte ReadOam(int address)
 		{
-			if (stat.currentMode == Mode.LCDTransfer || stat.currentMode == Mode.OAM)
+			if (stat.CurrentMode == Mode.LCDTransfer || stat.CurrentMode == Mode.OAM)
 			{
 				return 0xff;
 			}
@@ -167,7 +167,7 @@ namespace SpecBoy
 
 		public void WriteOam(int address, byte value, bool bypass = false)
 		{
-			if (bypass || stat.currentMode != Mode.LCDTransfer && stat.currentMode != Mode.OAM)
+			if (bypass || stat.CurrentMode != Mode.LCDTransfer && stat.CurrentMode != Mode.OAM)
 			{
 				Oam[address] = value;
 			}
@@ -175,14 +175,14 @@ namespace SpecBoy
 
 		public void Tick()
 		{
-			if (!lcdc.lcdEnabled)
+			if (!lcdc.LcdEnabled)
 			{
 				return;
 			}
 
 			currentCycle += 4;
 
-			switch (stat.currentMode)
+			switch (stat.CurrentMode)
 			{
 				case Mode.HBlank:
 					if (currentCycle == 204)
@@ -240,14 +240,14 @@ namespace SpecBoy
 
 		private void ChangeMode(Mode mode)
 		{
-			stat.currentMode = mode;
+			stat.CurrentMode = mode;
 
 			switch (mode)
 			{
 				case Mode.HBlank:
 					RenderScanline();
 
-					if (stat.hBlankInt)
+					if (stat.HBlankInt)
 					{
 						UpdateStat(Mode.HBlank);
 					}
@@ -262,13 +262,13 @@ namespace SpecBoy
 
 					Interrupts.VBlankIrqReq = true;
 
-					if (stat.vBlankInt)
+					if (stat.VBlankInt)
 					{
 						UpdateStat(Mode.VBlank);
 					}
 
 					// Also fire OAM interrupt if set
-					if (stat.oamInt)
+					if (stat.OamInt)
 					{
 						UpdateStat(Mode.OAM);
 					}
@@ -276,7 +276,7 @@ namespace SpecBoy
 					break;
 
 				case Mode.OAM:
-					if (stat.oamInt)
+					if (stat.OamInt)
 					{
 						UpdateStat(Mode.OAM);
 					}
@@ -290,25 +290,25 @@ namespace SpecBoy
 
 		private void UpdateStat(Mode mode)
 		{
-			if (!lcdc.lcdEnabled)
+			if (!lcdc.LcdEnabled)
 			{
 				return;
 			}
 
-			stat.lyCompareFlag = Ly == Lyc;
+			stat.LyCompareFlag = Ly == Lyc;
 
 			bool oldIntRequest = statIntRequest;
 
 			statIntRequest = mode switch
 			{
-				Mode.HBlank => stat.hBlankInt,
-				Mode.VBlank => stat.vBlankInt,
-				Mode.OAM => stat.oamInt,
+				Mode.HBlank => stat.HBlankInt,
+				Mode.VBlank => stat.VBlankInt,
+				Mode.OAM => stat.OamInt,
 				_ => false,
 			};
 
 			// Test for Ly == Lyc if requested
-			if (stat.lyCompareInt && stat.lyCompareFlag)
+			if (stat.LyCompareInt && stat.LyCompareFlag)
 			{
 				statIntRequest = true;
 			}
@@ -325,18 +325,18 @@ namespace SpecBoy
 		private void RenderBackground()
 		{
 			int colour = 0;
-			ushort tileData = (ushort)(lcdc.tileDataSelect ? 0x8000 : 0x8800);
-			ushort bgTilemap = (ushort)(lcdc.bgTileMapSelect ? 0x9c00 : 0x9800);
-			ushort windowTilemap = (ushort)(lcdc.windowTileMapSelect ? 0x9c00 : 0x9800);
+			ushort tileData = (ushort)(lcdc.TileDataSelect ? 0x8000 : 0x8800);
+			ushort bgTilemap = (ushort)(lcdc.BgTileMapSelect ? 0x9c00 : 0x9800);
+			ushort windowTilemap = (ushort)(lcdc.WindowTileMapSelect ? 0x9c00 : 0x9800);
 			short winX = (short)(Wx - 7);
 
 			bool windowDrawn = false;
-			bool canRenderWindow = Wy <= Ly && lcdc.windowEnabled;
+			bool canRenderWindow = Wy <= Ly && lcdc.WindowEnabled;
 
 			for (int x = 0; x < 160; x++)
 			{
 				// Colour is 0 if BG Priority bit not set
-				if (lcdc.bgEnabled)
+				if (lcdc.BgEnabled)
 				{
 					ushort tilemap;
 					byte tx;
@@ -397,13 +397,13 @@ namespace SpecBoy
 		private void RenderSprites()
 		{
 			// Just return if sprites not enabled
-			if (!lcdc.spritesEnabled)
+			if (!lcdc.SpritesEnabled)
 			{
 				return;
 			}
 
 			var sprites = new List<Sprite>();
-			int spriteSize = lcdc.spriteSize ? 16 : 8;
+			int spriteSize = lcdc.SpriteSize ? 16 : 8;
 
 			// Search OAM for sprites that appear on scanline (up to 10)
 			for (int i = 0; i < 0xa0 && sprites.Count < 10; i += 4)
