@@ -29,5 +29,4 @@
 			HBlankInt = (value & 0x08) != 0;
 		}
 	}
-	
 }

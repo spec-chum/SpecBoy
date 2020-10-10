@@ -36,5 +36,4 @@
 			BgEnabled = (value & 0x01) != 0;
 		}
 	}
-	
 }
