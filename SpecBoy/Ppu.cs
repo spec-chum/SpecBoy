@@ -18,7 +18,6 @@ namespace SpecBoy
 
 		public byte Scy;
 		public byte Scx;
-		public byte Lyc;
 		public byte Wy;
 		public byte Wx;
 		public byte Bgp;
@@ -41,6 +40,8 @@ namespace SpecBoy
 		private int currentCycle;
 		private byte winY;
 		private bool statIntRequest;
+		private byte ly;
+		private byte lyc;
 
 		public Ppu(RenderWindow window, int scale)
 		{
@@ -87,11 +88,14 @@ namespace SpecBoy
 				// LCD being switched off?
 				if (oldEnabled && !lcdc.lcdEnabled)
 				{
-					// Reset everything
+					// Reset state
 					Ly = 0;
-					Lyc = 0;
 					currentCycle = 0;
 					stat.currentMode = Mode.HBlank;
+				}
+				else
+				{
+					UpdateStat(stat.currentMode);
 				}
 			}
 		}
@@ -100,17 +104,38 @@ namespace SpecBoy
 		{
 			get
 			{
+				UpdateStat(stat.currentMode);
 				return stat.GetByte();
 			}
 
 			set
 			{
 				stat.SetByte(value);
+
+				// Might set an interrupt we need to fire, so check for that
 				UpdateStat(stat.currentMode);
 			}
 		}
 
-		public byte Ly { get; private set; }
+		public byte Ly 
+		{ 
+			get => ly;
+			private set
+			{
+				ly = value;
+				UpdateStat(stat.currentMode);
+			}
+		}
+
+		public byte Lyc 
+		{ 
+			get => lyc;
+			set
+			{
+				lyc = value;
+				UpdateStat(stat.currentMode);
+			}
+		}
 
 		public byte ReadVRam(int address)
 		{
@@ -128,8 +153,8 @@ namespace SpecBoy
 			{
 				VRam[address] = value;
 			}
-		}		
-		
+		}
+
 		public byte ReadOam(int address)
 		{
 			if (stat.currentMode == Mode.LCDTransfer || stat.currentMode == Mode.OAM)
@@ -174,8 +199,6 @@ namespace SpecBoy
 						{
 							ChangeMode(Mode.OAM);
 						}
-
-						UpdateStat(Mode.HBlank);
 					}
 
 					break;
@@ -189,11 +212,9 @@ namespace SpecBoy
 
 						if (Ly == 154)
 						{
-							ChangeMode(Mode.OAM);
 							Ly = 0;
+							ChangeMode(Mode.OAM);
 						}
-
-						UpdateStat(Mode.VBlank);
 					}
 
 					break;
@@ -274,7 +295,7 @@ namespace SpecBoy
 				return;
 			}
 
-			stat.coincidenceFlag = Ly == Lyc;
+			stat.lyCompareFlag = Ly == Lyc;
 
 			bool oldIntRequest = statIntRequest;
 
@@ -287,7 +308,7 @@ namespace SpecBoy
 			};
 
 			// Test for Ly == Lyc if requested
-			if (stat.coincidenceInt && stat.coincidenceFlag)
+			if (stat.lyCompareInt && stat.lyCompareFlag)
 			{
 				statIntRequest = true;
 			}
