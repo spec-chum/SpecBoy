@@ -28,7 +28,7 @@ namespace SpecBoy
 		public delegate byte ReadDelegate(int address);
 		public delegate void WriteDelegate(int address, byte value);
 
-		public enum CartType : byte
+		private enum CartType : byte
 		{
 			RomOnly = 0x00,
 			Mbc1 = 0x01,
@@ -87,7 +87,7 @@ namespace SpecBoy
 			Console.WriteLine();
 
 			CartType cartType = (CartType)rom[0x0147];
-			string typeString = Enum.GetName(typeof(CartType), cartType);
+			string typeString = cartType.ToString();
 			Console.WriteLine($"ROM type: {typeString.ToUpper()} ({(int)cartType})");
 
 			romSize = 0x20 << rom[0x0148];
