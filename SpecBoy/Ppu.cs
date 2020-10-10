@@ -47,7 +47,6 @@ namespace SpecBoy
 
 		private int currentCycle;
 		private byte winY;
-		private bool statIntRequest;
 		private byte ly;
 		private byte lyc;
 
@@ -82,8 +81,8 @@ namespace SpecBoy
 			set
 			{
 				bool oldEnabled = lcdc.LcdEnabled;
-
 				lcdc.SetByte(value);
+				stat.lcdEnabled = lcdc.LcdEnabled;
 
 				// LCD being switched off?
 				if (oldEnabled && !lcdc.LcdEnabled)
@@ -93,10 +92,6 @@ namespace SpecBoy
 					currentCycle = 0;
 					stat.CurrentMode = Mode.HBlank;
 				}
-				else
-				{
-					UpdateStat(stat.CurrentMode);
-				}
 			}
 		}
 
@@ -104,16 +99,12 @@ namespace SpecBoy
 		{
 			get
 			{
-				UpdateStat(stat.CurrentMode);
 				return stat.GetByte();
 			}
 
 			set
 			{
 				stat.SetByte(value);
-
-				// Might set an interrupt we need to fire, so check for that
-				UpdateStat(stat.CurrentMode);
 			}
 		}
 
@@ -123,7 +114,7 @@ namespace SpecBoy
 			private set
 			{
 				ly = value;
-				UpdateStat(stat.CurrentMode);
+				stat.Ly = ly;
 			}
 		}
 
@@ -133,7 +124,7 @@ namespace SpecBoy
 			set
 			{
 				lyc = value;
-				UpdateStat(stat.CurrentMode);
+				stat.Lyc = lyc;
 			}
 		}
 
@@ -249,7 +240,7 @@ namespace SpecBoy
 
 					if (stat.HBlankInt)
 					{
-						UpdateStat(Mode.HBlank);
+						stat.RequestInterrupt(Mode.HBlank);
 					}
 
 					break;
@@ -264,13 +255,13 @@ namespace SpecBoy
 
 					if (stat.VBlankInt)
 					{
-						UpdateStat(Mode.VBlank);
+						stat.RequestInterrupt(Mode.VBlank);
 					}
 
 					// Also fire OAM interrupt if set
 					if (stat.OamInt)
 					{
-						UpdateStat(Mode.OAM);
+						stat.RequestInterrupt(Mode.OAM);
 					}
 
 					break;
@@ -278,45 +269,13 @@ namespace SpecBoy
 				case Mode.OAM:
 					if (stat.OamInt)
 					{
-						UpdateStat(Mode.OAM);
+						stat.RequestInterrupt(Mode.OAM);
 					}
 
 					break;
 
 				case Mode.LCDTransfer:
 					break;
-			}
-		}
-
-		private void UpdateStat(Mode mode)
-		{
-			if (!lcdc.LcdEnabled)
-			{
-				return;
-			}
-
-			stat.LyCompareFlag = Ly == Lyc;
-
-			bool oldIntRequest = statIntRequest;
-
-			statIntRequest = mode switch
-			{
-				Mode.HBlank => stat.HBlankInt,
-				Mode.VBlank => stat.VBlankInt,
-				Mode.OAM => stat.OamInt,
-				_ => false,
-			};
-
-			// Test for Ly == Lyc if requested
-			if (stat.LyCompareInt && stat.LyCompareFlag)
-			{
-				statIntRequest = true;
-			}
-
-			// Only fire on rising edge (STAT IRQ blocking)
-			if (statIntRequest && !oldIntRequest)
-			{
-				Interrupts.StatIrqReq = true;
 			}
 		}
 
