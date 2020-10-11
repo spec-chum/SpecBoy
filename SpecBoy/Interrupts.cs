@@ -35,11 +35,11 @@
 			}
 			set
 			{
-				vBlankIrqReq = Utility.IsBitSet(value, 0);
-				statIrqReq = Utility.IsBitSet(value, 1);
-				timerIrqReq = Utility.IsBitSet(value, 2);
-				serialIrqReq = Utility.IsBitSet(value, 3);
-				joypadIrqReq = Utility.IsBitSet(value, 4);
+				vBlankIrqReq = value.IsBitSet(0);
+				statIrqReq = value.IsBitSet(1);
+				timerIrqReq = value.IsBitSet(2);
+				serialIrqReq = value.IsBitSet(3);
+				joypadIrqReq = value.IsBitSet(4);
 
 				interruptFlag = value;
 			}

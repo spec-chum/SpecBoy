@@ -16,26 +16,26 @@
 			public byte GetByte()
 			{
 				return (byte)
-					( (lcdEnabled ? (1 << 7) : 0)
-					| (windowTileMapSelect ? (1 << 6) : 0)
-					| (windowEnabled ? (1 << 5) : 0)
-					| (tileDataSelect ? (1 << 4) : 0)
-					| (bgTileMapSelect ? (1 << 3) : 0)
-					| (spriteSize ? (1 << 2) : 0)
-					| (spritesEnabled ? (1 << 1) : 0)
-					| (bgEnabled ? 1 : 0));
+					( lcdEnabled.ToIntPower(7)
+					| windowTileMapSelect.ToIntPower(6)
+					| windowEnabled.ToIntPower(5)
+					| tileDataSelect.ToIntPower(4)
+					| bgTileMapSelect.ToIntPower(3)
+					| spriteSize.ToIntPower(2)
+					| spritesEnabled.ToIntPower(1)
+					| bgEnabled.ToInt());
 			}
 
 			public void SetByte(byte value)
 			{
-				lcdEnabled = (value & 0x80) != 0;
-				windowTileMapSelect = (value & 0x40) != 0;
-				windowEnabled = (value & 0x20) != 0;
-				tileDataSelect = (value & 0x10) != 0;
-				bgTileMapSelect = (value & 0x08) != 0;
-				spriteSize = (value & 0x04) != 0;
-				spritesEnabled = (value & 0x02) != 0;
-				bgEnabled = (value & 0x01) != 0;
+				lcdEnabled = value.IsBitSet(7);
+				windowTileMapSelect = value.IsBitSet(6);
+				windowEnabled = value.IsBitSet(5);
+				tileDataSelect = value.IsBitSet(4);
+				bgTileMapSelect = value.IsBitSet(3);
+				spriteSize = value.IsBitSet(2);
+				spritesEnabled = value.IsBitSet(1);
+				bgEnabled = value.IsBitSet(0);
 			}
 		}
 	}

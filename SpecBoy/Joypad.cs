@@ -57,8 +57,8 @@ namespace SpecBoy
 			}
 			set
 			{
-				buttonsEnabled = !Utility.IsBitSet(value, 5);
-				dpadEnabled = !Utility.IsBitSet(value, 4);
+				buttonsEnabled = !value.IsBitSet(5);
+				dpadEnabled = !value.IsBitSet(4);
 
 				// Check for SGB detection
 				isDetectingSgb = !buttonsEnabled && !dpadEnabled;

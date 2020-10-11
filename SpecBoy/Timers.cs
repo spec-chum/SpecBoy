@@ -104,7 +104,7 @@
 
 		private void DetectFallingEdge()
 		{
-			bool result = ((tac & (1 << 2)) != 0) && ((divCounter & (1 << divBit)) != 0);
+			bool result = tac.IsBitSet(2) && divCounter.IsBitSet(divBit);
 
 			// Detect falling edge
 			if (lastResult && !result)

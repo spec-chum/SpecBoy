@@ -14,21 +14,21 @@
 			public byte GetByte()
 			{
 				return (byte)(0x80
-				| (lyCompareInt ? (1 << 6) : 0)
-				| (oamInt ? (1 << 5) : 0)
-				| (vBlankInt ? (1 << 4) : 0)
-				| (hBlankInt ? (1 << 3) : 0)
-				| (lyCompareFlag ? (1 << 2) : 0)
+				| lyCompareInt.ToIntPower(6)
+				| oamInt.ToIntPower(5)
+				| vBlankInt.ToIntPower(4)
+				| hBlankInt.ToIntPower(3)
+				| lyCompareFlag.ToIntPower(2)
 				| (int)currentMode);
 			}
 
 			public void SetByte(byte value)
 			{
 				// Bits 0 to 2 are read only
-				lyCompareInt = (value & 0x40) != 0;
-				oamInt = (value & 0x20) != 0;
-				vBlankInt = (value & 0x10) != 0;
-				hBlankInt = (value & 0x08) != 0;
+				lyCompareInt = value.IsBitSet(6);
+				oamInt = value.IsBitSet(5);
+				vBlankInt = value.IsBitSet(4);
+				hBlankInt = value.IsBitSet(3);
 			}
 		}
 	}
