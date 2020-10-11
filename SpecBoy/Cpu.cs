@@ -645,10 +645,10 @@ namespace SpecBoy
 
 		private void UpdateFlags()
 		{
-			int flags = zero ? (1 << 7) : 0;
-			flags |= negative ? (1 << 6) : 0;
-			flags |= halfCarry ? (1 << 5) : 0;
-			flags |= carry ? (1 << 4) : 0;
+			int flags = zero.ToIntPower(7);
+			flags |= negative.ToIntPower(6); 
+			flags |= halfCarry.ToIntPower(5);
+			flags |= carry.ToIntPower(4);
 
 			af.R8Low = (byte)flags;
 		}
@@ -1197,27 +1197,27 @@ namespace SpecBoy
 					CycleTick();
 
 					// Check which interrupt to service, in priority order
-					if (Interrupts.VBlankIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.VBlankIeBit))
+					if (Interrupts.VBlankIrqReq && Interrupts.IE.IsBitSet(Interrupts.VBlankIeBit))
 					{
 						Interrupts.VBlankIrqReq = false;
 						IrqVector = Interrupts.VBlankIrqVector;
 					}
-					else if (Interrupts.StatIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.StatIeBit))
+					else if (Interrupts.StatIrqReq && Interrupts.IE.IsBitSet(Interrupts.StatIeBit))
 					{
 						Interrupts.StatIrqReq = false;
 						IrqVector = Interrupts.StatIrqVector;
 					}
-					else if (Interrupts.TimerIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.TimerIeBit))
+					else if (Interrupts.TimerIrqReq && Interrupts.IE.IsBitSet(Interrupts.TimerIeBit))
 					{
 						Interrupts.TimerIrqReq = false;
 						IrqVector = Interrupts.TimerIrqVector;
 					}
-					else if (Interrupts.SerialIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.SerialIeBit))
+					else if (Interrupts.SerialIrqReq && Interrupts.IE.IsBitSet(Interrupts.SerialIeBit))
 					{
 						Interrupts.SerialIrqReq = false;
 						IrqVector = Interrupts.SerialIrqVector;
 					}
-					else if (Interrupts.JoypadIrqReq && Utility.IsBitSet(Interrupts.IE, Interrupts.JoypadIeBit))
+					else if (Interrupts.JoypadIrqReq && Interrupts.IE.IsBitSet(Interrupts.JoypadIeBit))
 					{
 						Interrupts.JoypadIrqReq = false;
 						IrqVector = Interrupts.JoypadIrqVector;

@@ -2,42 +2,42 @@
 
 namespace SpecBoy
 {
-	static class Utility
+	public static class ExtensionMethods
 	{
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool IsBitSet(byte value, int bit)
+		public static bool IsBitSet(this byte value, int bit)
 		{
 			return (value & (1 << bit)) != 0;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static bool IsBitSet(ushort value, int bit)
+		public static bool IsBitSet(this ushort value, int bit)
 		{
 			return (value & (1 << bit)) != 0;
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static byte SetBit(byte value, int bit)
+		public static byte SetBit(this byte value, int bit)
 		{
 			return (byte)(value | (1 << bit));
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static void SetBit(ref byte value, int bit)
-		{
-			value |= (byte)(1 << bit);
-		}
-
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static byte ClearBit(byte value, int bit)
+		public static byte ClearBit(this byte value, int bit)
 		{
 			return (byte)(value & (~(1 << bit)));
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static void ClearBit(ref byte value, int bit)
+		public static int ToInt(this bool value)
 		{
-			value &= (byte)~(1 << bit);
+			return value ? 1 : 0;
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static int ToIntPower(this bool value, int bitShiftAmount)
+		{
+			return value ? (1 << bitShiftAmount) : 0;
 		}
 	}
 }

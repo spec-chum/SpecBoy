@@ -340,7 +340,7 @@ namespace SpecBoy
 					byte lowByte = ReadByteVRam(tileLocation);
 					byte highByte = ReadByteVRam(tileLocation + 1);
 
-					colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
+					colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
 				}
 
 				scanlineBuffer[x] = GetColourFromPalette(colour, Bgp);
@@ -434,10 +434,10 @@ namespace SpecBoy
 					byte tileX = (byte)(sprite.XFlip ? 7 - tilePixel : tilePixel);
 
 					// Get colour
-					int colour = (Utility.IsBitSet(highByte, 7 - tileX) ? (1 << 1) : 0) | (Utility.IsBitSet(lowByte, 7 - tileX) ? 1 : 0);
+					int colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
 					int pal = sprite.PalNum ? Obp1 : Obp0;
 
-					// Check priority and onLy draw pixel if not transparent colour
+					// Check priority and only draw pixel if not transparent colour
 					if ((!sprite.Priority || scanlineBuffer[currentPixel] == 0) && colour != 0)
 					{
 						scanlineBuffer[currentPixel] = GetColourFromPalette(colour, pal);

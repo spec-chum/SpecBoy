@@ -26,14 +26,14 @@
 
 		public void SetByte(byte value)
 		{
-			LcdEnabled = (value & 0x80) != 0;
-			WindowTileMapSelect = (value & 0x40) != 0;
-			WindowEnabled = (value & 0x20) != 0;
-			TileDataSelect = (value & 0x10) != 0;
-			BgTileMapSelect = (value & 0x08) != 0;
-			SpriteSize = (value & 0x04) != 0;
-			SpritesEnabled = (value & 0x02) != 0;
-			BgEnabled = (value & 0x01) != 0;
+				LcdEnabled = (value & 0x80) != 0;
+				WindowTileMapSelect = (value & 0x40) != 0;
+				WindowEnabled = (value & 0x20) != 0;
+				TileDataSelect = (value & 0x10) != 0;
+				BgTileMapSelect = (value & 0x08) != 0;
+				SpriteSize = (value & 0x04) != 0;
+				SpritesEnabled = (value & 0x02) != 0;
+				BgEnabled = (value & 0x01) != 0;
 		}
 	}
 }

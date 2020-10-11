@@ -8,10 +8,10 @@
 			X = (short)(x - 8);
 			TileNum = tileNum;
 
-			Priority = Utility.IsBitSet(attributes, 7);
-			YFlip = Utility.IsBitSet(attributes, 6);
-			XFlip = Utility.IsBitSet(attributes, 5);
-			PalNum = Utility.IsBitSet(attributes, 4);
+			Priority = attributes.IsBitSet(7);
+			YFlip = attributes.IsBitSet(6);
+			XFlip = attributes.IsBitSet(5);
+			PalNum = attributes.IsBitSet(4);
 		}
 
 		public short Y { get; }
