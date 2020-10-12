@@ -14,7 +14,8 @@ namespace SpecBoy
 		HBlank,
 		VBlank,
 		OAM,
-		LCDTransfer
+		LCDTransfer,
+		None
 	}
 
 	class Ppu
@@ -49,6 +50,8 @@ namespace SpecBoy
 		private byte winY;
 		private byte ly;
 		private byte lyc;
+		private bool lcdJustEnabled;
+		private bool onLine153;
 
 		public Ppu(RenderWindow window, int scale)
 		{
@@ -92,6 +95,13 @@ namespace SpecBoy
 					currentCycle = 0;
 					stat.CurrentMode = Mode.HBlank;
 				}
+				else if (!oldEnabled && lcdc.LcdEnabled)
+				{
+					// LCD just been switched on
+					lcdJustEnabled = true;
+					stat.SetLy(0, true);
+					stat.CurrentMode = Mode.HBlank;
+				}
 			}
 		}
 
@@ -114,7 +124,9 @@ namespace SpecBoy
 			private set
 			{
 				ly = value;
-				stat.Ly = ly;
+
+				// Cmp for Ly = 0 is done in VBlank, so don't do it here
+				stat.SetLy(ly, ly != 0);
 			}
 		}
 
@@ -124,7 +136,9 @@ namespace SpecBoy
 			set
 			{
 				lyc = value;
-				stat.Lyc = lyc;
+
+				// Cmp for Ly = 0 is done in VBlank, so don't do it here
+				stat.SetLyc(lyc, ly != 0);
 			}
 		}
 
@@ -171,15 +185,35 @@ namespace SpecBoy
 				return;
 			}
 
-			currentCycle += 4;
+			if (Ly == 153 || onLine153)
+			{
+				Line153();
+			}
+			else if (Ly == 0)
+			{
+				Line0();
+			}
+			else
+			{
+				Lines1to152();
+			}
 
+			currentCycle += 4;
+		}
+
+		private void Line0()
+		{
+			Lines1to152();
+		}
+
+		private void Lines1to152()
+		{
 			switch (stat.CurrentMode)
 			{
 				case Mode.HBlank:
 					if (currentCycle == 204)
 					{
 						currentCycle = 0;
-
 						Ly++;
 
 						if (Ly == 144)
@@ -198,14 +232,7 @@ namespace SpecBoy
 					if (currentCycle == 456)
 					{
 						currentCycle = 0;
-
 						Ly++;
-
-						if (Ly == 154)
-						{
-							Ly = 0;
-							ChangeMode(Mode.OAM);
-						}
 					}
 
 					break;
@@ -225,6 +252,32 @@ namespace SpecBoy
 						currentCycle = 0;
 						ChangeMode(Mode.HBlank);
 					}
+					break;
+			}
+		}
+
+		private void Line153()
+		{
+			switch (currentCycle)
+			{
+				case 4:
+					// Shows Ly as 0 after 4 cycles, but cmp is still against 153
+					onLine153 = true;
+					Ly = 0;
+					stat.SetLy(153, true);
+					break;
+				case 12:
+					// Now cmp Ly == Lyc when Ly is 0
+					stat.SetLy(0, true);
+					break;
+				case 456:
+					// We're done
+					onLine153 = false;
+					currentCycle = 0;
+					ChangeMode(Mode.OAM);
+					break;
+
+				default:
 					break;
 			}
 		}

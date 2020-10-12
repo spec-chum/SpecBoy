@@ -16,26 +16,26 @@
 
 		private bool statIntRequest;
 
-		public byte Ly 
+		public byte GetLy()
 		{
-			get => ly;
-
-			set
-			{
-				ly = value;
-				RequestInterrupt(CurrentMode);
-			}
+			return ly;
 		}
 
-		public byte Lyc
+		public void SetLy(byte value, bool compareLy)
 		{
-			get => lyc;
+			ly = value;
+			RequestInterrupt(CurrentMode, compareLy);
+		}
 
-			set
-			{
-				lyc = value;
-				RequestInterrupt(CurrentMode);
-			}
+		public byte GetLyc()
+		{
+			return lyc;
+		}
+
+		public void SetLyc(byte value, bool compareLy)
+		{
+			lyc = value;
+			RequestInterrupt(CurrentMode, compareLy);
 		}
 
 		public byte GetByte()
@@ -48,7 +48,7 @@
 			| (VBlankInt ? (1 << 4) : 0)
 			| (HBlankInt ? (1 << 3) : 0)
 			| (LyCompareFlag ? (1 << 2) : 0)
-			| (int)CurrentMode);
+			| ((int)CurrentMode & 3));
 		}
 
 		public void SetByte(byte value)
@@ -82,7 +82,7 @@
 			// Test for Ly == Lyc if requested
 			if (compareLy)
 			{
-				LyCompareFlag = Ly == Lyc;
+				LyCompareFlag = ly == lyc;
 				if (LyCompareInt && LyCompareFlag)
 				{
 					statIntRequest = true;
