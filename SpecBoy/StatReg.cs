@@ -43,21 +43,20 @@
 			RequestInterrupt(CurrentMode);
 
 			return (byte)(0x80
-			| (LyCompareInt ? (1 << 6) : 0)
-			| (OamInt ? (1 << 5) : 0)
-			| (VBlankInt ? (1 << 4) : 0)
-			| (HBlankInt ? (1 << 3) : 0)
-			| (LyCompareFlag ? (1 << 2) : 0)
-			| ((int)CurrentMode & 3));
+				| LyCompareInt.ToIntPower(6)
+				| OamInt.ToIntPower(5)
+				| VBlankInt.ToIntPower(4)
+				| HBlankInt.ToIntPower(3)
+				| LyCompareFlag.ToIntPower(2)
+				| (int)CurrentMode);
 		}
 
 		public void SetByte(byte value)
 		{
-			// Bits 0 to 2 are read only
-			LyCompareInt = (value & 0x40) != 0;
-			OamInt = (value & 0x20) != 0;
-			VBlankInt = (value & 0x10) != 0;
-			HBlankInt = (value & 0x08) != 0;
+			LyCompareInt = value.IsBitSet(6);
+			OamInt = value.IsBitSet(5);
+			VBlankInt = value.IsBitSet(4);
+			HBlankInt = value.IsBitSet(3);
 
 			RequestInterrupt(CurrentMode);
 		}
