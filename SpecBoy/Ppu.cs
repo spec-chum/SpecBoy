@@ -42,6 +42,8 @@ namespace SpecBoy
 
 		private readonly int[] scanlineBuffer;
 		private readonly byte[] pixels;
+		private readonly byte[] vRam;
+		private readonly byte[] oam;
 
 		private LcdcReg lcdc;
 		private StatReg stat;
@@ -50,8 +52,6 @@ namespace SpecBoy
 		private byte winY;
 		private byte ly;
 		private byte lyc;
-		private byte[] vRam;
-		private byte[] oam;
 		private bool lcdJustEnabled;
 		private bool onLine153;
 
@@ -181,6 +181,8 @@ namespace SpecBoy
 				return;
 			}
 
+			currentCycle += 4;
+
 			if (Ly == 153 || onLine153)
 			{
 				Line153();
@@ -193,8 +195,6 @@ namespace SpecBoy
 			{
 				Lines1to152();
 			}
-
-			currentCycle += 4;
 		}
 
 		private void Line0()
