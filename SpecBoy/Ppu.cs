@@ -50,13 +50,15 @@ namespace SpecBoy
 		private byte winY;
 		private byte ly;
 		private byte lyc;
+		private byte[] vRam;
+		private byte[] oam;
 		private bool lcdJustEnabled;
 		private bool onLine153;
 
 		public Ppu(RenderWindow window, int scale)
 		{
-			VRam = new byte[0x2000];
-			Oam = new byte[0xa0];
+			vRam = new byte[0x2000];
+			oam = new byte[0xa0];
 			pixels = new byte[ScreenWidth * ScreenHeight * sizeof(uint)];
 			scanlineBuffer = new int[160];
 
@@ -70,17 +72,12 @@ namespace SpecBoy
 			stat.CurrentMode = Mode.OAM;
 		}
 
-		private byte[] VRam { get; }
-
-		private byte[] Oam { get; }
-
 		public byte Lcdc
 		{
 			get
 			{
 				return lcdc.GetByte();
 			}
-
 			set
 			{
 				bool oldEnabled = lcdc.LcdEnabled;
@@ -111,7 +108,6 @@ namespace SpecBoy
 			{
 				return stat.GetByte();
 			}
-
 			set
 			{
 				stat.SetByte(value);
@@ -149,14 +145,14 @@ namespace SpecBoy
 				return 0xff;
 			}
 
-			return VRam[address];
+			return vRam[address];
 		}
 
 		public void WriteVRam(int address, byte value)
 		{
 			if (stat.CurrentMode != Mode.LCDTransfer)
 			{
-				VRam[address] = value;
+				vRam[address] = value;
 			}
 		}
 
@@ -167,14 +163,14 @@ namespace SpecBoy
 				return 0xff;
 			}
 
-			return Oam[address];
+			return oam[address];
 		}
 
-		public void WriteOam(int address, byte value, bool bypass = false)
+		public void WriteOam(int address, byte value, bool dma = false)
 		{
-			if (bypass || stat.CurrentMode != Mode.LCDTransfer && stat.CurrentMode != Mode.OAM)
+			if (dma || (stat.CurrentMode != Mode.LCDTransfer && stat.CurrentMode != Mode.OAM))
 			{
-				Oam[address] = value;
+				oam[address] = value;
 			}
 		}
 
@@ -332,7 +328,10 @@ namespace SpecBoy
 			}
 		}
 
-		private byte ReadByteVRam(int address) => VRam[address & 0x1fff];
+		private byte ReadByteVRam(int address)
+		{
+			return vRam[address & 0x1fff];
+		}
 
 		private void RenderBackground()
 		{
@@ -420,12 +419,12 @@ namespace SpecBoy
 			// Search OAM for sprites that appear on scanline (up to 10)
 			for (int i = 0; i < 0xa0 && sprites.Count < 10; i += 4)
 			{
-				short spriteStartY = (short)(Oam[i] - 16);
+				short spriteStartY = (short)(oam[i] - 16);
 				short spriteEndY = (short)(spriteStartY + spriteSize);
 
 				if (spriteStartY <= Ly && Ly < spriteEndY)
 				{
-					sprites.Add(new Sprite(Oam[i], Oam[i + 1], Oam[i + 2], Oam[i + 3]));
+					sprites.Add(new Sprite(oam[i], oam[i + 1], oam[i + 2], oam[i + 3]));
 				}
 			}
 

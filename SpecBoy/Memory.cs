@@ -163,7 +163,11 @@ namespace SpecBoy
 				0xff43 => ppu.Scx,
 				0xff44 => ppu.Ly,
 				0xff45 => ppu.Lyc,
+
+				// DMA
 				0xff46 => (byte)(dmaSrcAddr >> 8),
+
+				// PPU
 				0xff47 => ppu.Bgp,
 				0xff48 => ppu.Obp0,
 				0xff49 => ppu.Obp1,
@@ -282,6 +286,7 @@ namespace SpecBoy
 					dmaCycles = 162;
 					break;
 
+				// PPU
 				case 0xff47:
 					ppu.Bgp = value;
 					break;
