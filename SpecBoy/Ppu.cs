@@ -14,14 +14,16 @@ namespace SpecBoy
 		HBlank,
 		VBlank,
 		OAM,
-		LCDTransfer,
-		None
+		LCDTransfer
 	}
 
 	class Ppu
 	{
 		private const int ScreenWidth = 160;
 		private const int ScreenHeight = 144;
+		private const int OamCycles = 80;
+		private const int LcdTransferCycles = 172;
+		private const int LineTotalCycles = 456;
 
 		public readonly uint[] colours = { 0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff };
 
@@ -49,10 +51,10 @@ namespace SpecBoy
 		private StatReg stat;
 
 		private int currentCycle;
+		private int lcdEnabledGlitch;
 		private byte winY;
 		private byte ly;
 		private byte lyc;
-		private bool lcdJustEnabled;
 		private bool onLine153;
 
 		public Ppu(RenderWindow window, int scale)
@@ -95,7 +97,7 @@ namespace SpecBoy
 				else if (!oldEnabled && lcdc.LcdEnabled)
 				{
 					// LCD just been switched on
-					lcdJustEnabled = true;
+					lcdEnabledGlitch = 4;
 					stat.SetLy(0, true);
 					stat.CurrentMode = Mode.HBlank;
 				}
@@ -183,72 +185,47 @@ namespace SpecBoy
 
 			currentCycle += 4;
 
-			if (Ly == 153 || onLine153)
+			// Ly can actually be 0 when we're still on 153
+			if (onLine153 || Ly == 153)
 			{
 				Line153();
 			}
-			else if (Ly == 0)
+			else if (Ly <= 143)
 			{
-				Line0();
+				DoLine();
 			}
-			else
+			else if (currentCycle == 456)
 			{
-				Lines1to152();
+				// VBlank
+				currentCycle = 0;
+				Ly++;
 			}
 		}
 
-		private void Line0()
+		private void DoLine()
 		{
-			Lines1to152();
-		}
-
-		private void Lines1to152()
-		{
-			switch (stat.CurrentMode)
+			if (currentCycle == OamCycles - lcdEnabledGlitch)
 			{
-				case Mode.HBlank:
-					if (currentCycle == 204)
-					{
-						currentCycle = 0;
-						Ly++;
+				ChangeMode(Mode.LCDTransfer);
+			}
+			else if (currentCycle == OamCycles + LcdTransferCycles)
+			{
+				ChangeMode(Mode.HBlank);
+			}
+			else if (currentCycle == LineTotalCycles - lcdEnabledGlitch)
+			{
+				lcdEnabledGlitch = 0;
+				currentCycle = 0;
+				Ly++;
 
-						if (Ly == 144)
-						{
-							ChangeMode(Mode.VBlank);
-						}
-						else
-						{
-							ChangeMode(Mode.OAM);
-						}
-					}
-
-					break;
-
-				case Mode.VBlank:
-					if (currentCycle == 456)
-					{
-						currentCycle = 0;
-						Ly++;
-					}
-
-					break;
-
-				case Mode.OAM:
-					if (currentCycle == 80)
-					{
-						currentCycle = 0;
-						ChangeMode(Mode.LCDTransfer);
-					}
-
-					break;
-
-				case Mode.LCDTransfer:
-					if (currentCycle == 172)
-					{
-						currentCycle = 0;
-						ChangeMode(Mode.HBlank);
-					}
-					break;
+				if (Ly == 144)
+				{
+					ChangeMode(Mode.VBlank);
+				}
+				else
+				{
+					ChangeMode(Mode.OAM);
+				}
 			}
 		}
 

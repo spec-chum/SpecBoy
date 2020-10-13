@@ -48,7 +48,7 @@
 				| VBlankInt.ToIntPower(4)
 				| HBlankInt.ToIntPower(3)
 				| LyCompareFlag.ToIntPower(2)
-				| ((int)CurrentMode & 3));
+				| (int)CurrentMode);
 		}
 
 		public void SetByte(byte value)
