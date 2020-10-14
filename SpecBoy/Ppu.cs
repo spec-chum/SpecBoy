@@ -49,6 +49,7 @@ namespace SpecBoy
 
 		private LcdcReg lcdc;
 		private StatReg stat;
+		private Mode statModeCache;
 
 		private int currentCycle;
 		private int lcdEnabledGlitch;
@@ -98,7 +99,7 @@ namespace SpecBoy
 				{
 					// LCD just been switched on
 					lcdEnabledGlitch = 4;
-					stat.SetLy(0, true);
+					stat.SetLy(0, false);
 					stat.CurrentMode = Mode.HBlank;
 				}
 			}
@@ -183,6 +184,8 @@ namespace SpecBoy
 				return;
 			}
 
+			//statModeCache = stat.CurrentMode;
+
 			currentCycle += 4;
 
 			// Ly can actually be 0 when we're still on 153
@@ -200,6 +203,8 @@ namespace SpecBoy
 				currentCycle = 0;
 				Ly++;
 			}
+
+			//stat.CurrentMode = statModeCache;
 		}
 
 		private void DoLine()
@@ -208,7 +213,7 @@ namespace SpecBoy
 			{
 				ChangeMode(Mode.LCDTransfer);
 			}
-			else if (currentCycle == OamCycles + LcdTransferCycles)
+			else if (currentCycle == OamCycles + LcdTransferCycles - lcdEnabledGlitch)
 			{
 				ChangeMode(Mode.HBlank);
 			}
@@ -257,6 +262,7 @@ namespace SpecBoy
 
 		private void ChangeMode(Mode mode)
 		{
+			//statModeCache = mode;
 			stat.CurrentMode = mode;
 
 			switch (mode)

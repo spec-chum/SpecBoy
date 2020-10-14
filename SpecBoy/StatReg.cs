@@ -16,26 +16,21 @@
 
 		private bool statIntRequest;
 
-		public byte GetLy()
-		{
-			return ly;
-		}
-
 		public void SetLy(byte value, bool compareLy)
 		{
 			ly = value;
 			RequestInterrupt(CurrentMode, compareLy);
 		}
 
-		public byte GetLyc()
-		{
-			return lyc;
-		}
-
 		public void SetLyc(byte value, bool compareLy)
 		{
 			lyc = value;
 			RequestInterrupt(CurrentMode, compareLy);
+		}
+
+		public void ClearLyCompareFlag()
+		{
+			LyCompareFlag = false;
 		}
 
 		public byte GetByte()
