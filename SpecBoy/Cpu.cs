@@ -242,8 +242,7 @@ namespace SpecBoy
 
 				// STOP
 				case 0x10:
-					isHalted = true;
-					break;
+					throw new Exception("STOP HIT!");
 
 				// DAA
 				case 0x27:

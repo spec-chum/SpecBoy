@@ -11,26 +11,22 @@
 
 		public bool lcdEnabled;
 
+		//private int currentCycle;
 		private byte value;
 		private byte ly;
 		private byte lyc;
 		private bool statIntRequest;
 
-		public void SetLyForCompare(byte value, bool compareLy)
+		public void SetLyForCompare(byte value, int currentCycle)
 		{
 			ly = value;
-			RequestInterrupt(CurrentMode, compareLy);
+			CompareLy(currentCycle);
 		}
 
-		public void SetLyc(byte value, bool compareLy)
+		public void SetLycForCompare(byte value, int currentCycle)
 		{
 			lyc = value;
-			RequestInterrupt(CurrentMode, compareLy);
-		}
-
-		public void ClearLyCompareFlag()
-		{
-			LyCompareFlag = false;
+			CompareLy(currentCycle);
 		}
 
 		public byte GetByte()
@@ -58,7 +54,22 @@
 			RequestInterrupt(CurrentMode, false);
 		}
 
-		public void RequestInterrupt(Mode mode, bool compareLy = true)
+		public void CompareLy(int currentCycle)
+		{
+			// Compare Flag is always 0 on cycle 0, except on line 0
+			if (ly != 0 && currentCycle == 0)
+			{
+				LyCompareFlag = false;
+			}
+			else
+			{
+				LyCompareFlag = ly == lyc;
+			}
+
+			RequestInterrupt(CurrentMode, LyCompareFlag);
+		}
+
+		public void RequestInterrupt(Mode mode, bool doCompareLy = true)
 		{
 			if (!lcdEnabled)
 			{
@@ -76,9 +87,8 @@
 			};
 
 			// Test for Ly == Lyc if requested
-			if (compareLy)
+			if (doCompareLy)
 			{
-				LyCompareFlag = ly == lyc;
 				if (LyCompareInt && LyCompareFlag)
 				{
 					statIntRequest = true;

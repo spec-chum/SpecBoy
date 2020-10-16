@@ -52,7 +52,7 @@ namespace SpecBoy
 		private StatReg stat;
 		private Mode statModeCache;
 
-		private long currentCycle;
+		private int currentCycle;
 		//private int counter;
 		private byte winY;
 		private byte ly;
@@ -100,8 +100,6 @@ namespace SpecBoy
 				{
 					// LCD just been switched on, so PPU late
 					currentCycle = 4;
-
-					stat.SetLyForCompare(0, true);
 					ChangeMode(Mode.None);
 				}
 			}
@@ -125,9 +123,7 @@ namespace SpecBoy
 			private set
 			{
 				ly = value;
-
-				// Cmp for Ly = 0 is done in VBlank, so don't do it here
-				stat.SetLyForCompare(ly, false);
+				stat.SetLyForCompare(ly, currentCycle);
 			}
 		}
 
@@ -137,9 +133,7 @@ namespace SpecBoy
 			set
 			{
 				lyc = value;
-
-				// Cmp for Ly = 0 is done in VBlank, so don't do it here
-				stat.SetLyc(lyc, false);
+				stat.SetLycForCompare(lyc, currentCycle);
 			}
 		}
 
@@ -247,15 +241,14 @@ namespace SpecBoy
 			else if (currentCycle == LineTotalCycles)
 			{
 				// VBlank
-				Ly++;
-
 				currentCycle = 0;
+				Ly++;
 
 				if (Ly == 153)
 				{
 					onLine153 = true;
 					Ly = 0;
-					stat.SetLyForCompare(153, true);
+					stat.SetLyForCompare(153, currentCycle);
 				}
 			}
 		}
@@ -264,7 +257,7 @@ namespace SpecBoy
 		{
 			if (currentCycle == 4)
 			{
-				stat.SetLyForCompare(Ly, Ly != 0);
+				stat.CompareLy(currentCycle);
 			}
 			else if (currentCycle == OamCycles)
 			{
@@ -277,9 +270,8 @@ namespace SpecBoy
 			else if (currentCycle == LineTotalCycles)
 			{
 				ChangeMode(Mode.None);
-				ly++;
-				stat.ClearLyCompareFlag();
 				currentCycle = 0;
+				Ly++;
 
 				if (Ly == 144)
 				{
@@ -297,16 +289,15 @@ namespace SpecBoy
 			switch (currentCycle)
 			{
 				case 4:
-					stat.ClearLyCompareFlag();
+					stat.CompareLy(currentCycle);
 					break;
 				case 8:
 					// Now cmp Ly == Lyc when Ly is 0
-					stat.SetLyForCompare(0, true);
+					stat.SetLyForCompare(0, currentCycle);
 					break;
 				case LineTotalCycles:
 					// We're done
 					onLine153 = false;
-					stat.ClearLyCompareFlag();
 					currentCycle = 0;
 					ChangeMode(Mode.OAM);
 					break;
