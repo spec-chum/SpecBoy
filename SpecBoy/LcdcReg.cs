@@ -11,9 +11,11 @@
 		public bool SpritesEnabled;
 		public bool BgEnabled;
 
+		private byte value;
+
 		public byte GetByte()
 		{
-			return (byte)
+			value =  (byte)
 				( LcdEnabled.ToIntPower(7)
 				| WindowTileMapSelect.ToIntPower(6)
 				| WindowEnabled.ToIntPower(5)
@@ -22,6 +24,8 @@
 				| SpriteSize.ToIntPower(2)
 				| SpritesEnabled.ToIntPower(1)
 				| BgEnabled.ToInt());
+
+			return value;
 	}
 
 		public void SetByte(byte value)

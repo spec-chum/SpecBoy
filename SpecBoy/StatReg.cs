@@ -11,12 +11,12 @@
 
 		public bool lcdEnabled;
 
+		private byte value;
 		private byte ly;
 		private byte lyc;
-
 		private bool statIntRequest;
 
-		public void SetLy(byte value, bool compareLy)
+		public void SetLyForCompare(byte value, bool compareLy)
 		{
 			ly = value;
 			RequestInterrupt(CurrentMode, compareLy);
@@ -35,15 +35,17 @@
 
 		public byte GetByte()
 		{
-			RequestInterrupt(CurrentMode);
+			RequestInterrupt(CurrentMode, false);
 
-			return (byte)(0x80
+			value =  (byte)(0x80
 				| LyCompareInt.ToIntPower(6)
 				| OamInt.ToIntPower(5)
 				| VBlankInt.ToIntPower(4)
 				| HBlankInt.ToIntPower(3)
 				| LyCompareFlag.ToIntPower(2)
 				| (int)CurrentMode);
+
+			return value;
 		}
 
 		public void SetByte(byte value)
@@ -53,7 +55,7 @@
 			VBlankInt = value.IsBitSet(4);
 			HBlankInt = value.IsBitSet(3);
 
-			RequestInterrupt(CurrentMode);
+			RequestInterrupt(CurrentMode, false);
 		}
 
 		public void RequestInterrupt(Mode mode, bool compareLy = true)

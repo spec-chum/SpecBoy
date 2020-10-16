@@ -14,7 +14,8 @@ namespace SpecBoy
 		HBlank,
 		VBlank,
 		OAM,
-		LCDTransfer
+		LCDTransfer,
+		None = 256
 	}
 
 	class Ppu
@@ -51,12 +52,13 @@ namespace SpecBoy
 		private StatReg stat;
 		private Mode statModeCache;
 
-		private int currentCycle;
-		private int lcdEnabledGlitch;
+		private long currentCycle;
+		//private int counter;
 		private byte winY;
 		private byte ly;
 		private byte lyc;
 		private bool onLine153;
+
 
 		public Ppu(RenderWindow window, int scale)
 		{
@@ -92,15 +94,15 @@ namespace SpecBoy
 				{
 					// Reset state
 					Ly = 0;
-					currentCycle = 0;
-					stat.CurrentMode = Mode.HBlank;
+					ChangeMode(Mode.None);
 				}
 				else if (!oldEnabled && lcdc.LcdEnabled)
 				{
-					// LCD just been switched on
-					lcdEnabledGlitch = 4;
-					stat.SetLy(0, false);
-					stat.CurrentMode = Mode.HBlank;
+					// LCD just been switched on, so PPU late
+					currentCycle = 4;
+
+					stat.SetLyForCompare(0, true);
+					ChangeMode(Mode.None);
 				}
 			}
 		}
@@ -125,7 +127,7 @@ namespace SpecBoy
 				ly = value;
 
 				// Cmp for Ly = 0 is done in VBlank, so don't do it here
-				stat.SetLy(ly, ly != 0);
+				stat.SetLyForCompare(ly, false);
 			}
 		}
 
@@ -137,23 +139,69 @@ namespace SpecBoy
 				lyc = value;
 
 				// Cmp for Ly = 0 is done in VBlank, so don't do it here
-				stat.SetLyc(lyc, ly != 0);
+				stat.SetLyc(lyc, false);
 			}
+		}
+
+		public bool CanAccessVRam()
+		{
+			// Always available when LCD is off
+			if (!lcdc.LcdEnabled)
+			{
+				return true;
+			}
+
+			// Inaccessible during mode 3
+			if (stat.CurrentMode == Mode.LCDTransfer)
+			{
+				return false;
+			}
+
+			// Inaccessible on cycle before changing to mode 3
+			if (stat.CurrentMode == Mode.OAM && currentCycle == 80)
+			{
+				return false;
+			}
+
+			return true;
+		}
+
+		public bool CanAccessOam()
+		{
+			// Always available when LCD is off
+			if (!lcdc.LcdEnabled)
+			{
+				return true;
+			}
+
+			// Inaccessible during modes 2 and 3
+			if (stat.CurrentMode == Mode.OAM || stat.CurrentMode == Mode.LCDTransfer)
+			{
+				return false;
+			}
+
+			// Inaccessbile on first cycle when Ly != 0
+			if (Ly != 0 && currentCycle == 0)
+			{
+				return false;
+			}
+
+			return true;
 		}
 
 		public byte ReadVRam(int address)
 		{
-			if (stat.CurrentMode == Mode.LCDTransfer)
+			if (CanAccessVRam())
 			{
-				return 0xff;
+				return vRam[address];
 			}
 
-			return vRam[address];
+			return 0xff;
 		}
 
 		public void WriteVRam(int address, byte value)
 		{
-			if (stat.CurrentMode != Mode.LCDTransfer)
+			if (CanAccessVRam())
 			{
 				vRam[address] = value;
 			}
@@ -161,17 +209,17 @@ namespace SpecBoy
 
 		public byte ReadOam(int address)
 		{
-			if (stat.CurrentMode == Mode.LCDTransfer || stat.CurrentMode == Mode.OAM)
+			if (CanAccessOam())
 			{
-				return 0xff;
+				return oam[address];
 			}
 
-			return oam[address];
+			return 0xff;
 		}
 
 		public void WriteOam(int address, byte value, bool dma = false)
 		{
-			if (dma || (stat.CurrentMode != Mode.LCDTransfer && stat.CurrentMode != Mode.OAM))
+			if (dma || CanAccessOam())
 			{
 				oam[address] = value;
 			}
@@ -184,12 +232,11 @@ namespace SpecBoy
 				return;
 			}
 
-			//statModeCache = stat.CurrentMode;
-
+			stat.CurrentMode = statModeCache;
 			currentCycle += 4;
 
-			// Ly can actually be 0 when we're still on 153
-			if (onLine153 || Ly == 153)
+			// Ly will actually be 0 when we're still on 153
+			if (onLine153)
 			{
 				Line153();
 			}
@@ -197,31 +244,42 @@ namespace SpecBoy
 			{
 				DoLine();
 			}
-			else if (currentCycle == 456)
+			else if (currentCycle == LineTotalCycles)
 			{
 				// VBlank
-				currentCycle = 0;
 				Ly++;
-			}
 
-			//stat.CurrentMode = statModeCache;
+				currentCycle = 0;
+
+				if (Ly == 153)
+				{
+					onLine153 = true;
+					Ly = 0;
+					stat.SetLyForCompare(153, true);
+				}
+			}
 		}
 
 		private void DoLine()
 		{
-			if (currentCycle == OamCycles - lcdEnabledGlitch)
+			if (currentCycle == 4)
+			{
+				stat.SetLyForCompare(Ly, Ly != 0);
+			}
+			else if (currentCycle == OamCycles)
 			{
 				ChangeMode(Mode.LCDTransfer);
 			}
-			else if (currentCycle == OamCycles + LcdTransferCycles - lcdEnabledGlitch)
+			else if (currentCycle == OamCycles + LcdTransferCycles)
 			{
 				ChangeMode(Mode.HBlank);
 			}
-			else if (currentCycle == LineTotalCycles - lcdEnabledGlitch)
+			else if (currentCycle == LineTotalCycles)
 			{
-				lcdEnabledGlitch = 0;
+				ChangeMode(Mode.None);
+				ly++;
+				stat.ClearLyCompareFlag();
 				currentCycle = 0;
-				Ly++;
 
 				if (Ly == 144)
 				{
@@ -231,7 +289,7 @@ namespace SpecBoy
 				{
 					ChangeMode(Mode.OAM);
 				}
-			}
+			}	
 		}
 
 		private void Line153()
@@ -239,18 +297,16 @@ namespace SpecBoy
 			switch (currentCycle)
 			{
 				case 4:
-					// Shows Ly as 0 after 4 cycles, but cmp is still against 153
-					onLine153 = true;
-					Ly = 0;
-					stat.SetLy(153, true);
+					stat.ClearLyCompareFlag();
 					break;
-				case 12:
+				case 8:
 					// Now cmp Ly == Lyc when Ly is 0
-					stat.SetLy(0, true);
+					stat.SetLyForCompare(0, true);
 					break;
-				case 456:
+				case LineTotalCycles:
 					// We're done
 					onLine153 = false;
+					stat.ClearLyCompareFlag();
 					currentCycle = 0;
 					ChangeMode(Mode.OAM);
 					break;
@@ -262,11 +318,13 @@ namespace SpecBoy
 
 		private void ChangeMode(Mode mode)
 		{
-			//statModeCache = mode;
-			stat.CurrentMode = mode;
+			statModeCache = mode;
 
 			switch (mode)
 			{
+				case Mode.None:
+					break;
+
 				case Mode.HBlank:
 					RenderScanline();
 
@@ -311,7 +369,7 @@ namespace SpecBoy
 			}
 		}
 
-		private byte ReadByteVRam(int address)
+		private byte ReadVRamInternal(int address)
 		{
 			return vRam[address & 0x1fff];
 		}
@@ -357,7 +415,7 @@ namespace SpecBoy
 						tilemap = bgTilemap;
 					}
 
-					byte tileIndex = ReadByteVRam(tilemap + (ty / 8 * 32) + (tx / 8));
+					byte tileIndex = ReadVRamInternal(tilemap + (ty / 8 * 32) + (tx / 8));
 
 					byte tileX = (byte)(tx & 7);
 					byte tileY = (byte)(ty & 7);
@@ -372,8 +430,8 @@ namespace SpecBoy
 						tileLocation = (ushort)(tileData + 0x0800 + ((sbyte)tileIndex * 16) + (tileY * 2));
 					}
 
-					byte lowByte = ReadByteVRam(tileLocation);
-					byte highByte = ReadByteVRam(tileLocation + 1);
+					byte lowByte = ReadVRamInternal(tileLocation);
+					byte highByte = ReadVRamInternal(tileLocation + 1);
 
 					colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
 				}
@@ -441,8 +499,8 @@ namespace SpecBoy
 					tileIndex += (ushort)((sprite.TileNum & 0xfe) * 16 + (tileY * 2));
 				}
 
-				byte lowByte = ReadByteVRam(tileIndex);
-				byte highByte = ReadByteVRam(tileIndex + 1);
+				byte lowByte = ReadVRamInternal(tileIndex);
+				byte highByte = ReadVRamInternal(tileIndex + 1);
 
 				for (int tilePixel = 0; tilePixel < 8; tilePixel++)
 				{
