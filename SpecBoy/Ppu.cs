@@ -94,7 +94,7 @@ namespace SpecBoy
 				{
 					// Reset state
 					Ly = 0;
-					ChangeMode(Mode.None);
+					stat.CurrentMode = Mode.None;
 				}
 				else if (!oldEnabled && lcdc.LcdEnabled)
 				{
@@ -174,7 +174,7 @@ namespace SpecBoy
 				return false;
 			}
 
-			// Inaccessbile on first cycle when Ly != 0
+			// Inaccessible on first cycle when Ly != 0
 			if (Ly != 0 && currentCycle == 0)
 			{
 				return false;
