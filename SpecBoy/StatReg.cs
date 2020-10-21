@@ -16,13 +16,13 @@
 		private byte lyc;
 		private bool statIntRequest;
 
-		public void SetLyForCompare(byte value)
+		public void SetStatLy(byte value)
 		{
 			ly = value;
 			CompareLy();
 		}
 
-		public void SetLycForCompare(byte value)
+		public void SetStatLyc(byte value)
 		{
 			lyc = value;
 			CompareLy();
@@ -62,7 +62,11 @@
 
 			LyCompareFlag = ly == lyc;
 
-			RequestInterrupt(CurrentMode);
+			// STAT interrupt never fired for line 0
+			if (ly != 0)
+			{
+				RequestInterrupt(CurrentMode);
+			}
 		}
 
 		public void RequestInterrupt(Mode mode)
