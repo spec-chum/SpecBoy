@@ -31,7 +31,7 @@
 
 		public byte GetByte()
 		{
-			RequestInterrupt(CurrentMode, false);
+			RequestInterrupt(CurrentMode);
 
 			value =  (byte)(0x80
 				| LyCompareInt.ToIntPower(6)
@@ -51,11 +51,16 @@
 			VBlankInt = value.IsBitSet(4);
 			HBlankInt = value.IsBitSet(3);
 
-			RequestInterrupt(CurrentMode, false);
+			RequestInterrupt(CurrentMode);
 		}
 
 		public void CompareLy(int currentCycle)
 		{
+			if (!lcdEnabled)
+			{
+				return;
+			}
+
 			// Compare Flag is always 0 on cycle 0, except on line 0
 			if (ly != 0 && currentCycle == 0)
 			{
@@ -66,10 +71,10 @@
 				LyCompareFlag = ly == lyc;
 			}
 
-			RequestInterrupt(CurrentMode, LyCompareFlag);
+			RequestInterrupt(CurrentMode);
 		}
 
-		public void RequestInterrupt(Mode mode, bool doCompareLy = true)
+		public void RequestInterrupt(Mode mode)
 		{
 			if (!lcdEnabled)
 			{
@@ -86,13 +91,9 @@
 				_ => false,
 			};
 
-			// Test for Ly == Lyc if requested
-			if (doCompareLy)
+			if (LyCompareInt && LyCompareFlag)
 			{
-				if (LyCompareInt && LyCompareFlag)
-				{
-					statIntRequest = true;
-				}
+				statIntRequest = true;
 			}
 
 			// Only fire on rising edge (STAT IRQ blocking)

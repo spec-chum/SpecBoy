@@ -53,12 +53,11 @@ namespace SpecBoy
 		private Mode statModeCache;
 
 		private int currentCycle;
-		//private int counter;
 		private byte winY;
 		private byte ly;
 		private byte lyc;
 		private bool onLine153;
-
+		private bool lcdJustOn;
 
 		public Ppu(RenderWindow window, int scale)
 		{
@@ -99,8 +98,11 @@ namespace SpecBoy
 				else if (!oldEnabled && lcdc.LcdEnabled)
 				{
 					// LCD just been switched on, so PPU late
-					currentCycle = 4;
+					currentCycle = 0;
+					stat.SetLyForCompare(0, currentCycle);
 					ChangeMode(Mode.None);
+
+					lcdJustOn = true;
 				}
 			}
 		}
@@ -123,7 +125,7 @@ namespace SpecBoy
 			private set
 			{
 				ly = value;
-				stat.SetLyForCompare(ly, currentCycle);
+				//stat.SetLyForCompare(ly, currentCycle);
 			}
 		}
 
@@ -229,10 +231,16 @@ namespace SpecBoy
 			stat.CurrentMode = statModeCache;
 			currentCycle += 4;
 
+			//Console.WriteLine($"Ly: {ly}, clks: {currentCycle} current mode: {stat.CurrentMode}");
+
 			// Ly will actually be 0 when we're still on 153
 			if (onLine153)
 			{
 				Line153();
+			}
+			else if (lcdJustOn)
+			{
+				Line0();
 			}
 			else if (Ly <= 143)
 			{
@@ -243,6 +251,7 @@ namespace SpecBoy
 				// VBlank
 				currentCycle = 0;
 				Ly++;
+				stat.SetLyForCompare(Ly, currentCycle);
 
 				if (Ly == 153)
 				{
@@ -250,6 +259,31 @@ namespace SpecBoy
 					Ly = 0;
 					stat.SetLyForCompare(153, currentCycle);
 				}
+			}
+		}
+
+		private void Line0()
+		{
+			if (currentCycle == 4)
+			{
+				//stat.CompareLy(currentCycle);
+			}
+			else if (currentCycle == OamCycles-4)
+			{
+				ChangeMode(Mode.LCDTransfer);
+			}
+			else if (currentCycle == OamCycles + LcdTransferCycles-4)
+			{
+				ChangeMode(Mode.HBlank);
+			}
+			else if (currentCycle == LineTotalCycles-4)
+			{
+				lcdJustOn = false;
+				currentCycle = 0;
+				Ly++;
+				stat.SetLyForCompare(Ly, currentCycle);
+
+				ChangeMode(Mode.OAM);
 			}
 		}
 
@@ -269,9 +303,9 @@ namespace SpecBoy
 			}
 			else if (currentCycle == LineTotalCycles)
 			{
-				ChangeMode(Mode.None);
 				currentCycle = 0;
 				Ly++;
+				stat.SetLyForCompare(Ly, currentCycle);
 
 				if (Ly == 144)
 				{
