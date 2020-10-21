@@ -98,8 +98,8 @@ namespace SpecBoy
 				else if (!oldEnabled && lcdc.LcdEnabled)
 				{
 					// LCD just been switched on, so PPU late
-					currentCycle = 0;
-					stat.SetLyForCompare(0, currentCycle);
+					currentCycle = 4;
+					stat.SetLyForCompare(0);
 					ChangeMode(Mode.None);
 
 					lcdJustOn = true;
@@ -125,7 +125,6 @@ namespace SpecBoy
 			private set
 			{
 				ly = value;
-				//stat.SetLyForCompare(ly, currentCycle);
 			}
 		}
 
@@ -135,7 +134,7 @@ namespace SpecBoy
 			set
 			{
 				lyc = value;
-				stat.SetLycForCompare(lyc, currentCycle);
+				stat.SetLycForCompare(lyc);
 			}
 		}
 
@@ -238,10 +237,10 @@ namespace SpecBoy
 			{
 				Line153();
 			}
-			else if (lcdJustOn)
-			{
-				Line0();
-			}
+			//else if (lcdJustOn)
+			//{
+			//	Line0();
+			//}
 			else if (Ly <= 143)
 			{
 				DoLine();
@@ -251,47 +250,49 @@ namespace SpecBoy
 				// VBlank
 				currentCycle = 0;
 				Ly++;
-				stat.SetLyForCompare(Ly, currentCycle);
+				stat.SetLyForCompare(Ly);
+				stat.LyCompareFlag = false;
 
 				if (Ly == 153)
 				{
 					onLine153 = true;
 					Ly = 0;
-					stat.SetLyForCompare(153, currentCycle);
+					stat.SetLyForCompare(153);
+					stat.LyCompareFlag = false;
 				}
 			}
 		}
 
-		private void Line0()
-		{
-			if (currentCycle == 4)
-			{
-				//stat.CompareLy(currentCycle);
-			}
-			else if (currentCycle == OamCycles-4)
-			{
-				ChangeMode(Mode.LCDTransfer);
-			}
-			else if (currentCycle == OamCycles + LcdTransferCycles-4)
-			{
-				ChangeMode(Mode.HBlank);
-			}
-			else if (currentCycle == LineTotalCycles-4)
-			{
-				lcdJustOn = false;
-				currentCycle = 0;
-				Ly++;
-				stat.SetLyForCompare(Ly, currentCycle);
+		//private void Line0()
+		//{
+		//	if (currentCycle == 4)
+		//	{
+		//		//stat.CompareLy(currentCycle);
+		//	}
+		//	else if (currentCycle == OamCycles-4)
+		//	{
+		//		ChangeMode(Mode.LCDTransfer);
+		//	}
+		//	else if (currentCycle == OamCycles + LcdTransferCycles-4)
+		//	{
+		//		ChangeMode(Mode.HBlank);
+		//	}
+		//	else if (currentCycle == LineTotalCycles-4)
+		//	{
+		//		lcdJustOn = false;
+		//		currentCycle = 0;
+		//		Ly++;
+		//		stat.SetLyForCompare(Ly);
 
-				ChangeMode(Mode.OAM);
-			}
-		}
+		//		ChangeMode(Mode.OAM);
+		//	}
+		//}
 
 		private void DoLine()
 		{
 			if (currentCycle == 4)
 			{
-				stat.CompareLy(currentCycle);
+				stat.CompareLy();
 			}
 			else if (currentCycle == OamCycles)
 			{
@@ -305,7 +306,8 @@ namespace SpecBoy
 			{
 				currentCycle = 0;
 				Ly++;
-				stat.SetLyForCompare(Ly, currentCycle);
+				stat.SetLyForCompare(Ly);
+				stat.LyCompareFlag = false;
 
 				if (Ly == 144)
 				{
@@ -323,11 +325,11 @@ namespace SpecBoy
 			switch (currentCycle)
 			{
 				case 4:
-					stat.CompareLy(currentCycle);
+					stat.CompareLy();
 					break;
 				case 8:
 					// Now cmp Ly == Lyc when Ly is 0
-					stat.SetLyForCompare(0, currentCycle);
+					stat.SetLyForCompare(0);
 					break;
 				case LineTotalCycles:
 					// We're done
