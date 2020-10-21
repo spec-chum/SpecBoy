@@ -57,7 +57,8 @@ namespace SpecBoy
 		private byte ly;
 		private byte lyc;
 		private bool onLine153;
-		private bool lcdJustOn;
+		//private bool lcdJustOn;
+		private Mode pendingStatInterrupt;
 
 		public Ppu(RenderWindow window, int scale)
 		{
@@ -74,6 +75,7 @@ namespace SpecBoy
 			};
 
 			stat.CurrentMode = Mode.OAM;
+			pendingStatInterrupt = Mode.None;
 		}
 
 		public byte Lcdc
@@ -102,7 +104,7 @@ namespace SpecBoy
 					stat.SetLyForCompare(0);
 					ChangeMode(Mode.None);
 
-					lcdJustOn = true;
+					//lcdJustOn = true;
 				}
 			}
 		}
@@ -228,6 +230,13 @@ namespace SpecBoy
 			}
 
 			stat.CurrentMode = statModeCache;
+
+			if (pendingStatInterrupt != Mode.None)
+			{
+				stat.RequestInterrupt(pendingStatInterrupt);
+				pendingStatInterrupt = Mode.None;
+			}
+
 			currentCycle += 4;
 
 			//Console.WriteLine($"Ly: {ly}, clks: {currentCycle} current mode: {stat.CurrentMode}");
@@ -258,7 +267,7 @@ namespace SpecBoy
 					onLine153 = true;
 					Ly = 0;
 					stat.SetLyForCompare(153);
-					stat.LyCompareFlag = false;
+					//stat.LyCompareFlag = false;
 				}
 			}
 		}
@@ -345,6 +354,7 @@ namespace SpecBoy
 
 		private void ChangeMode(Mode mode)
 		{
+			pendingStatInterrupt = Mode.None;
 			statModeCache = mode;
 
 			switch (mode)
@@ -357,7 +367,7 @@ namespace SpecBoy
 
 					if (stat.HBlankInt)
 					{
-						stat.RequestInterrupt(Mode.HBlank);
+						pendingStatInterrupt = Mode.HBlank;
 					}
 
 					break;
@@ -372,7 +382,7 @@ namespace SpecBoy
 
 					if (stat.VBlankInt)
 					{
-						stat.RequestInterrupt(Mode.VBlank);
+						pendingStatInterrupt = Mode.VBlank;
 					}
 
 					// Also fire OAM interrupt if set
@@ -386,7 +396,7 @@ namespace SpecBoy
 				case Mode.OAM:
 					if (stat.OamInt)
 					{
-						stat.RequestInterrupt(Mode.OAM);
+						pendingStatInterrupt = Mode.OAM;
 					}
 
 					break;
