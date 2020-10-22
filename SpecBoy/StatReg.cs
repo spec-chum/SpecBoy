@@ -12,21 +12,9 @@
 		public bool lcdEnabled;
 
 		private byte value;
-		private byte ly;
-		private byte lyc;
 		private bool statIntRequest;
 
-		public void SetStatLy(byte value)
-		{
-			ly = value;
-			CompareLy();
-		}
-
-		public void SetStatLyc(byte value)
-		{
-			lyc = value;
-			CompareLy();
-		}
+		public byte Lyc { get; set; }
 
 		public byte GetByte()
 		{
@@ -53,17 +41,16 @@
 			RequestInterrupt(CurrentMode);
 		}
 
-		public void CompareLy()
+		public void CompareLyc(byte ly, bool reqInt = true)
 		{
 			if (!lcdEnabled)
 			{
 				return;
 			}
 
-			LyCompareFlag = ly == lyc;
+			LyCompareFlag = ly == Lyc;
 
-			// STAT interrupt never fired for line 0
-			if (ly != 0)
+			if (reqInt)
 			{
 				RequestInterrupt(CurrentMode);
 			}

@@ -55,7 +55,6 @@ namespace SpecBoy
 
 		private int currentCycle;
 		private byte winY;
-		private byte ly;
 		private byte lyc;
 		private bool onLine153;
 
@@ -100,7 +99,8 @@ namespace SpecBoy
 				{
 					// LCD just been switched on, so PPU late
 					currentCycle = 4;
-					stat.SetStatLy(0);
+					//stat.SetStatLy(0);
+					stat.CompareLyc(0);
 					ChangeMode(Mode.None);
 				}
 			}
@@ -118,14 +118,7 @@ namespace SpecBoy
 			}
 		}
 
-		public byte Ly 
-		{ 
-			get => ly;
-			private set
-			{
-				ly = value;
-			}
-		}
+		public byte Ly { get; private set; }
 
 		public byte Lyc 
 		{ 
@@ -133,7 +126,8 @@ namespace SpecBoy
 			set
 			{
 				lyc = value;
-				stat.SetStatLyc(lyc);
+				stat.Lyc = lyc;
+				stat.CompareLyc(Ly);
 			}
 		}
 
@@ -242,7 +236,7 @@ namespace SpecBoy
 			}
 			else if (Ly <= 143)
 			{
-				Line1to143();
+				Line0to143();
 			}
 			else
 			{
@@ -250,17 +244,18 @@ namespace SpecBoy
 			}
 		}
 
-		private void Line1to143()
+		private void Line0to143()
 		{
 			if (currentCycle == 4)
 			{
-				stat.SetStatLy(Ly);
+				// STAT interrupt never fired for line 0
+				stat.CompareLyc(Ly, Ly != 0);
 			}
 			else if (currentCycle == OamCycles)
 			{
 				ChangeMode(Mode.LCDTransfer);
 			}
-			else if (currentCycle == OamCycles + LcdTransferCycles + (((Scx & 7) + 3) & -0x4))
+			else if (currentCycle == OamCycles + LcdTransferCycles + RoundToMCycles(Scx & 7))
 			{
 				ChangeMode(Mode.HBlank);
 			}
@@ -290,19 +285,18 @@ namespace SpecBoy
 					Interrupts.VBlankIrqReq = true;
 				}
 
+				stat.CompareLyc(Ly);
 				stat.RequestInterrupt(Mode.OAM);
 			}
 			else if (currentCycle == LineTotalCycles)
 			{
 				currentCycle = 0;
 				Ly++;
-				stat.SetStatLy(Ly);
 				stat.LyCompareFlag = false;
 
 				if (Ly == 153)
 				{
 					onLine153 = true;
-					stat.LyCompareFlag = false;
 				}
 			}
 
@@ -316,14 +310,14 @@ namespace SpecBoy
 			{
 				case 4:
 					Ly = 0;
-					stat.SetStatLy(153);
+					stat.CompareLyc(153);
 					break;
 				case 8:
 					stat.LyCompareFlag = false;
 					break;
 				case 12:
 					// Now cmp Ly == Lyc when Ly is 0
-					stat.SetStatLy(0);
+					stat.CompareLyc(0);
 					break;
 				case LineTotalCycles:
 					// We're done
@@ -366,6 +360,11 @@ namespace SpecBoy
 				case Mode.LCDTransfer:
 					break;
 			}
+		}
+
+		private int RoundToMCycles(int value)
+		{
+			return (value + 3) & -4;
 		}
 
 		private byte ReadVRamInternal(int address)
