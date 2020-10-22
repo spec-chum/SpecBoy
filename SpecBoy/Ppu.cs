@@ -50,7 +50,7 @@ namespace SpecBoy
 
 		private LcdcReg lcdc;
 		private StatReg stat;
-		private Mode statModeCache;
+		private Mode pendingStatMode;
 		private Mode pendingStatInterrupt;
 
 		private int currentCycle;
@@ -227,7 +227,7 @@ namespace SpecBoy
 			}
 
 			currentCycle += 4;
-			stat.CurrentMode = statModeCache;
+			stat.CurrentMode = pendingStatMode;
 
 			if (pendingStatInterrupt != Mode.None)
 			{
@@ -240,51 +240,13 @@ namespace SpecBoy
 			{
 				Line153();
 			}
-			else if (Ly == 0)
-			{
-				Line0();
-			}
 			else if (Ly <= 143)
 			{
 				Line1to143();
 			}
-			else if (currentCycle == LineTotalCycles)
+			else
 			{
-				// VBlank
-				currentCycle = 0;
-				Ly++;
-				stat.SetStatLy(Ly);
-				stat.LyCompareFlag = false;
-
-				if (Ly == 153)
-				{
-					onLine153 = true;
-					stat.LyCompareFlag = false;
-				}
-			}
-		}
-
-		private void Line0()
-		{
-			if (currentCycle == 4)
-			{
-				stat.SetStatLy(0);
-			}
-			else if (currentCycle == OamCycles)
-			{
-				ChangeMode(Mode.LCDTransfer);
-			}
-			else if (currentCycle == OamCycles + LcdTransferCycles)
-			{
-				ChangeMode(Mode.HBlank);
-			}
-			else if (currentCycle == LineTotalCycles)
-			{
-				currentCycle = 0;
-				Ly++;
-				stat.LyCompareFlag = false;
-
-				ChangeMode(Mode.OAM);
+				VBlank();
 			}
 		}
 
@@ -298,7 +260,7 @@ namespace SpecBoy
 			{
 				ChangeMode(Mode.LCDTransfer);
 			}
-			else if (currentCycle == OamCycles + LcdTransferCycles)
+			else if (currentCycle == OamCycles + LcdTransferCycles + (((Scx & 7) + 3) & -0x4))
 			{
 				ChangeMode(Mode.HBlank);
 			}
@@ -316,7 +278,36 @@ namespace SpecBoy
 				{
 					ChangeMode(Mode.OAM);
 				}
-			}	
+			}
+		}
+
+		private void VBlank()
+		{
+			if (currentCycle == 4)
+			{
+				if (Ly == 144)
+				{
+					Interrupts.VBlankIrqReq = true;
+				}
+
+				stat.RequestInterrupt(Mode.OAM);
+			}
+			else if (currentCycle == LineTotalCycles)
+			{
+				currentCycle = 0;
+				Ly++;
+				stat.SetStatLy(Ly);
+				stat.LyCompareFlag = false;
+
+				if (Ly == 153)
+				{
+					onLine153 = true;
+					stat.LyCompareFlag = false;
+				}
+			}
+
+			// STAT IF Flag can always be set to 1 anywhere on VBlank
+			stat.RequestInterrupt(Mode.VBlank);
 		}
 
 		private void Line153()
@@ -349,7 +340,7 @@ namespace SpecBoy
 		private void ChangeMode(Mode mode)
 		{
 			pendingStatInterrupt = Mode.None;
-			statModeCache = mode;
+			pendingStatMode = mode;
 
 			switch (mode)
 			{
@@ -358,41 +349,18 @@ namespace SpecBoy
 
 				case Mode.HBlank:
 					RenderScanline();
-
-					if (stat.HBlankInt)
-					{
-						pendingStatInterrupt = Mode.HBlank;
-					}
-
+					pendingStatInterrupt = Mode.HBlank;
 					break;
 
 				case Mode.VBlank:
 					HitVSync = true;
 					RenderFrame();
-
 					winY = 0;
-
-					Interrupts.VBlankIrqReq = true;
-
-					if (stat.VBlankInt)
-					{
-						pendingStatInterrupt = Mode.VBlank;
-					}
-
-					// Also fire OAM interrupt if set
-					if (stat.OamInt)
-					{
-						stat.RequestInterrupt(Mode.OAM);
-					}
-
+					pendingStatInterrupt = Mode.VBlank;
 					break;
 
 				case Mode.OAM:
-					if (stat.OamInt)
-					{
-						pendingStatInterrupt = Mode.OAM;
-					}
-
+					pendingStatInterrupt = Mode.OAM;
 					break;
 
 				case Mode.LCDTransfer:
