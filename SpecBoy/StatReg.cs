@@ -33,12 +33,17 @@
 
 		public void SetByte(byte value)
 		{
+			LyCompareInt = true;
+			OamInt = true;
+			VBlankInt = true;
+			HBlankInt = true;
+
+			RequestInterrupt(CurrentMode);
+
 			LyCompareInt = value.IsBitSet(6);
 			OamInt = value.IsBitSet(5);
 			VBlankInt = value.IsBitSet(4);
 			HBlankInt = value.IsBitSet(3);
-
-			RequestInterrupt(CurrentMode);
 		}
 
 		public void CompareLyc(byte ly, bool reqInt = true)

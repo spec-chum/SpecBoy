@@ -168,8 +168,8 @@ namespace SpecBoy
 				return false;
 			}
 
-			// Inaccessible on first cycle when Ly != 0
-			if (Ly != 0 && currentCycle == 0)
+			// Inaccessible on first cycle of line
+			if (currentCycle == 0)
 			{
 				return false;
 			}
@@ -271,6 +271,7 @@ namespace SpecBoy
 				}
 				else
 				{
+					stat.CurrentMode = Mode.None;
 					ChangeMode(Mode.OAM);
 				}
 			}
