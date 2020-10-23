@@ -50,8 +50,6 @@ namespace SpecBoy
 
 		private LcdcReg lcdc;
 		private StatReg stat;
-		private Mode pendingStatMode;
-		private Mode pendingStatInterrupt;
 
 		private int currentCycle;
 		private byte winY;
@@ -72,8 +70,7 @@ namespace SpecBoy
 				Scale = new Vector2f(scale, scale)
 			};
 
-			stat.CurrentMode = Mode.OAM;
-			pendingStatInterrupt = Mode.None;
+			stat.Init();
 		}
 
 		public byte Lcdc
@@ -99,7 +96,6 @@ namespace SpecBoy
 				{
 					// LCD just been switched on, so PPU late
 					currentCycle = 4;
-					//stat.SetStatLy(0);
 					stat.CompareLyc(0);
 					ChangeMode(Mode.None);
 				}
@@ -221,13 +217,7 @@ namespace SpecBoy
 			}
 
 			currentCycle += 4;
-			stat.CurrentMode = pendingStatMode;
-
-			if (pendingStatInterrupt != Mode.None)
-			{
-				stat.RequestInterrupt(pendingStatInterrupt);
-				pendingStatInterrupt = Mode.None;
-			}
+			stat.UpdatePending();
 
 			// Ly will actually be 0 when we're still on 153
 			if (onLine153)
@@ -334,8 +324,8 @@ namespace SpecBoy
 
 		private void ChangeMode(Mode mode)
 		{
-			pendingStatInterrupt = Mode.None;
-			pendingStatMode = mode;
+			stat.PendingInterrupt = Mode.None;
+			stat.PendingMode = mode;
 
 			switch (mode)
 			{
@@ -344,18 +334,18 @@ namespace SpecBoy
 
 				case Mode.HBlank:
 					RenderScanline();
-					pendingStatInterrupt = Mode.HBlank;
+					stat.PendingInterrupt = Mode.HBlank;
 					break;
 
 				case Mode.VBlank:
 					HitVSync = true;
 					RenderFrame();
 					winY = 0;
-					pendingStatInterrupt = Mode.VBlank;
+					stat.PendingInterrupt = Mode.VBlank;
 					break;
 
 				case Mode.OAM:
-					pendingStatInterrupt = Mode.OAM;
+					stat.PendingInterrupt = Mode.OAM;
 					//stat.RequestInterrupt(Mode.OAM);
 					break;
 

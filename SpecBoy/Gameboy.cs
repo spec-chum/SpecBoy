@@ -43,7 +43,7 @@ namespace SpecBoy
 			{
 				long cyclesThisFrame = 0;
 				long currentCycles = 0;
-								
+
 				window.DispatchEvents();
 
 				long prevPC = 0;

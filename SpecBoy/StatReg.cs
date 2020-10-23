@@ -10,11 +10,31 @@
 		public Mode CurrentMode;
 
 		public bool lcdEnabled;
+		public Mode PendingMode;
+		public Mode PendingInterrupt;
 
 		private byte value;
 		private bool statIntRequest;
 
 		public byte Lyc { get; set; }
+
+		public void Init()
+		{
+			CurrentMode = Mode.None;
+			PendingMode = Mode.None;
+			PendingInterrupt = Mode.None;
+		}
+
+		public void UpdatePending()
+		{
+			CurrentMode = PendingMode;
+
+			if (PendingInterrupt != Mode.None)
+			{
+				RequestInterrupt(PendingInterrupt);
+				PendingInterrupt = Mode.None;
+			}
+		}
 
 		public byte GetByte()
 		{
