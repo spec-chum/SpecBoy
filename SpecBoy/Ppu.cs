@@ -286,7 +286,7 @@ namespace SpecBoy
 				}
 
 				stat.CompareLyc(Ly);
-				stat.RequestInterrupt(Mode.OAM);
+				//stat.RequestInterrupt(Mode.OAM);
 			}
 			else if (currentCycle == LineTotalCycles)
 			{
@@ -355,6 +355,7 @@ namespace SpecBoy
 
 				case Mode.OAM:
 					pendingStatInterrupt = Mode.OAM;
+					//stat.RequestInterrupt(Mode.OAM);
 					break;
 
 				case Mode.LCDTransfer:

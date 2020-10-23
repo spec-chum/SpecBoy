@@ -1180,6 +1180,11 @@ namespace SpecBoy
 			// Check if any interrupts are pending
 			if ((Interrupts.IE & Interrupts.IF & 0x1f) != 0)
 			{
+				if (!isHalted)
+				{
+					CycleTick();
+				}
+
 				// Exit HALT regardless of current IME
 				isHalted = false;
 
