@@ -14,7 +14,7 @@
 		public Mode PendingInterrupt;
 
 		private byte value;
-		private bool statIntRequest;
+		private bool intRequest;
 
 		public byte Lyc { get; set; }
 
@@ -81,6 +81,11 @@
 			}
 		}
 
+		public void ResetIntRequestFlag()
+		{
+			intRequest = LyCompareInt && LyCompareFlag;
+		}
+
 		public void RequestInterrupt(Mode mode)
 		{
 			if (!lcdEnabled)
@@ -88,11 +93,11 @@
 				return;
 			}
 			
-			bool oldIntRequest = statIntRequest;
+			bool oldIntRequest = intRequest;
 
 			if (mode != Mode.None)
 			{
-				statIntRequest = mode switch
+				intRequest = mode switch
 				{
 					Mode.HBlank => HBlankInt,
 					Mode.VBlank => VBlankInt,
@@ -103,11 +108,11 @@
 
 			if (LyCompareInt && LyCompareFlag)
 			{
-				statIntRequest = true;
+				intRequest = true;
 			}
 
 			// Only fire on rising edge (STAT IRQ blocking)
-			if (!oldIntRequest && statIntRequest)
+			if (!oldIntRequest && intRequest)
 			{
 				Interrupts.StatIrqReq = true;
 			}

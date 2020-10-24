@@ -240,6 +240,7 @@ namespace SpecBoy
 			{
 				// STAT interrupt never fired for line 0
 				stat.CompareLyc(Ly, Ly != 0);
+				stat.ResetIntRequestFlag();
 			}
 			else if (currentCycle == OamCycles)
 			{
