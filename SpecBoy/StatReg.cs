@@ -90,13 +90,16 @@
 			
 			bool oldIntRequest = statIntRequest;
 
-			statIntRequest = mode switch
+			if (mode != Mode.None)
 			{
-				Mode.HBlank => HBlankInt,
-				Mode.VBlank => VBlankInt,
-				Mode.OAM => OamInt,
-				_ => false,
-			};
+				statIntRequest = mode switch
+				{
+					Mode.HBlank => HBlankInt,
+					Mode.VBlank => VBlankInt,
+					Mode.OAM => OamInt,
+					_ => false
+				};
+			}
 
 			if (LyCompareInt && LyCompareFlag)
 			{
@@ -104,7 +107,7 @@
 			}
 
 			// Only fire on rising edge (STAT IRQ blocking)
-			if (statIntRequest && !oldIntRequest)
+			if (!oldIntRequest && statIntRequest)
 			{
 				Interrupts.StatIrqReq = true;
 			}

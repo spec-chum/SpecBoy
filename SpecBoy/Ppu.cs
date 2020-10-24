@@ -251,6 +251,8 @@ namespace SpecBoy
 			}
 			else if (currentCycle == LineTotalCycles)
 			{
+				stat.CurrentMode = Mode.None;
+
 				currentCycle = 0;
 				Ly++;
 				stat.LyCompareFlag = false;
@@ -261,7 +263,6 @@ namespace SpecBoy
 				}
 				else
 				{
-					stat.CurrentMode = Mode.None;
 					ChangeMode(Mode.OAM);
 				}
 			}
