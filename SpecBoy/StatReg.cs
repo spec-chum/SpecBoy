@@ -81,11 +81,6 @@
 			}
 		}
 
-		public void ResetIntRequestFlag()
-		{
-			intRequest = LyCompareInt && LyCompareFlag;
-		}
-
 		public void RequestInterrupt(Mode mode)
 		{
 			if (!lcdEnabled)

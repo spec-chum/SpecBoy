@@ -240,7 +240,6 @@ namespace SpecBoy
 			{
 				// STAT interrupt never fired for line 0
 				stat.CompareLyc(Ly, Ly != 0);
-				stat.ResetIntRequestFlag();
 			}
 			else if (currentCycle == OamCycles)
 			{
@@ -276,10 +275,10 @@ namespace SpecBoy
 				if (Ly == 144)
 				{
 					Interrupts.VBlankIrqReq = true;
+					stat.RequestInterrupt(Mode.OAM);
 				}
 
 				stat.CompareLyc(Ly);
-				//stat.RequestInterrupt(Mode.OAM);
 			}
 			else if (currentCycle == LineTotalCycles)
 			{
@@ -348,10 +347,10 @@ namespace SpecBoy
 
 				case Mode.OAM:
 					stat.PendingInterrupt = Mode.OAM;
-					//stat.RequestInterrupt(Mode.OAM);
 					break;
 
 				case Mode.LCDTransfer:
+					stat.PendingInterrupt = Mode.LCDTransfer;
 					break;
 			}
 		}
