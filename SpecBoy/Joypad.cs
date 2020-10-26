@@ -22,6 +22,10 @@ namespace SpecBoy
 			window.KeyPressed += OnKeyPressed;
 			window.KeyReleased += OnKeyReleased;
 
+			window.JoystickMoved += OnJoyMoved;
+			window.JoystickButtonPressed += OnJoyButtonPressed;
+			window.JoystickButtonReleased += OnJoyButtonReleased;
+
 			up = 1;
 			down = 1;
 			left = 1;
@@ -139,6 +143,72 @@ namespace SpecBoy
 					buttonA = 1;
 					break;
 
+				default:
+					break;
+			}
+		}
+
+		private void OnJoyMoved(object sender, JoystickMoveEventArgs e)
+		{
+			if (e.Axis == Joystick.Axis.X)
+			{
+				left = e.Position == -100 ? 0 : 1;
+				right = e.Position == 100 ? 0 : 1;
+			}
+			else if (e.Axis == Joystick.Axis.Y)
+			{
+				up = e.Position == -100 ? 0 : 1;
+				down = e.Position == 100 ? 0 : 1;
+			}
+
+			if (left + right + up + down != 4)
+			{
+				Interrupts.JoypadIrqReq = true;
+			}
+		}
+
+		private void OnJoyButtonPressed(object sender, JoystickButtonEventArgs e)
+		{
+			bool fireInterrupt = true;
+
+			switch (e.Button)
+			{
+				case 0:
+					buttonA = 0;
+					break;
+				case 1:
+					buttonB = 0;
+					break;
+				case 6:
+					select = 0;
+					break;
+				case 7:
+					start = 0;
+					break;
+				default:
+					fireInterrupt = false;
+					break;
+			}
+
+			Interrupts.JoypadIrqReq = fireInterrupt;
+		}
+
+		private void OnJoyButtonReleased(object sender, JoystickButtonEventArgs e)
+		{
+			switch (e.Button)
+			{
+				case 0:
+					buttonA = 1;
+					break;
+				case 1:
+					buttonB = 1;
+					break;
+				case 6:
+					select = 1;
+					break;
+				case 7:
+					start = 1;
+					break;
 				default:
 					break;
 			}
