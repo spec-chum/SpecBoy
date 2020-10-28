@@ -480,9 +480,6 @@ namespace SpecBoy
 					WriteByte(0xff00 + C, A);
 					break;
 
-				case 0xe4:
-					break;
-
 				// AND A, u8
 				case 0xe6:
 					And(ReadNextByte());
