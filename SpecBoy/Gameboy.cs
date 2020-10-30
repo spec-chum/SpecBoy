@@ -48,7 +48,7 @@ namespace SpecBoy
 
 				long prevPC = 0;
 
-				while (cyclesThisFrame < (70224 / 4) && !ppu.HitVSync)
+				while (cyclesThisFrame < 70224 && !ppu.HitVSync)
 				{
 					if (logging)
 					{

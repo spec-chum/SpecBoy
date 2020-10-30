@@ -566,57 +566,57 @@ namespace SpecBoy
 			switch (opcode)
 			{
 				// RLC r8
-				case var n when n >= 0x00 && n <= 0x07:
+				case var n when n <= 0x07:
 					SetR8(regId, Rlc(GetR8(regId)));
 					break;
 
 				// RRC r8
-				case var n when n >= 0x08 && n <= 0x0f:
+				case var n when n <= 0x0f:
 					SetR8(regId, Rrc(GetR8(regId)));
 					break;
 
 				// RL r8
-				case var n when n >= 0x10 && n <= 0x17:
+				case var n when n <= 0x17:
 					SetR8(regId, Rl(GetR8(regId)));
 					break;
 
 				// RR r8
-				case var n when n >= 0x18 && n <= 0x1f:
+				case var n when n <= 0x1f:
 					SetR8(regId, Rr(GetR8(regId)));
 					break;
 
 				// SLA r8
-				case var n when n >= 0x20 && n <= 0x27:
+				case var n when n <= 0x27:
 					SetR8(regId, Sla(GetR8(regId)));
 					break;
 
 				// SRA r8
-				case var n when n >= 0x28 && n <= 0x2f:
+				case var n when n <= 0x2f:
 					SetR8(regId, Sra(GetR8(regId)));
 					break;
 
 				// SWAP r8
-				case var n when n >= 0x30 && n <= 0x37:
+				case var n when n <= 0x37:
 					SetR8(regId, Swap(GetR8(regId)));
 					break;
 
 				// SRL r8
-				case var n when n >= 0x38 && n <= 0x3f:
+				case var n when n <= 0x3f:
 					SetR8(regId, Srl(GetR8(regId)));
 					break;
 
 				// BIT
-				case var n when n >= 0x40 && n <= 0x7f:
+				case var n when n <= 0x7f:
 					Bit(GetR8(regId), (opcode >> 3) & 0x07);
 					break;
 
 				// RES
-				case var n when n >= 0x80 && n <= 0xbf:
+				case var n when n <= 0xbf:
 					SetR8(regId, Res(GetR8(regId), (opcode >> 3) & 0x07));
 					break;
 
 				// SET
-				case var n when n >= 0xc0 && n <= 0xff:
+				case var n when n <= 0xff:
 					SetR8(regId, Set(GetR8(regId), (opcode >> 3) & 0x07));
 					break;
 
@@ -629,7 +629,7 @@ namespace SpecBoy
 		// INCs cycles and ticks all components
 		private void CycleTick()
 		{
-			Cycles++;
+			Cycles += 4;
 
 			// Check DMA
 			mem.DoDma();
