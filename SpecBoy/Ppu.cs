@@ -470,7 +470,7 @@ namespace SpecBoy
 			sprites.Sort((s1, s2) => s1.X.CompareTo(s2.X));
 
 			// Used to check if pixel already drawn
-			bool[] drawn = new bool[160];
+			bool[] pixelDrawn = new bool[160];
 
 			foreach (var sprite in sprites)
 			{
@@ -500,16 +500,21 @@ namespace SpecBoy
 				{
 					short currentPixel = (short)(sprite.X + tilePixel);
 
-					// Pixel off screen or already drawn?
-					if (currentPixel < 0 || drawn[currentPixel])
+					// Pixel off screen?
+					if (currentPixel < 0)
 					{
 						continue;
+					}					
+					else if (currentPixel >= 160)
+					{
+						// Do next sprite if remaining pixels off screen
+						break;
 					}
 
-					// Rest of sprite off screen?
-					if (currentPixel >= 160)
+					// Already drawn?
+					if (pixelDrawn[currentPixel])
 					{
-						break;
+						continue;
 					}
 
 					byte tileX = (byte)(sprite.XFlip ? 7 - tilePixel : tilePixel);
@@ -522,7 +527,7 @@ namespace SpecBoy
 					if ((!sprite.Priority || scanlineBuffer[currentPixel] == 0) && colour != 0)
 					{
 						scanlineBuffer[currentPixel] = GetColourFromPalette(colour, pal);
-						drawn[currentPixel] = true;
+						pixelDrawn[currentPixel] = true;
 					}
 				}
 			}
