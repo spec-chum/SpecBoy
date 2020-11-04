@@ -2,6 +2,7 @@
 using SFML.System;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
@@ -466,8 +467,10 @@ namespace SpecBoy
 				return;
 			}
 
-			// Cache of sprite.x values to prioritise sprites
-			int[] minX = new int[160];
+			sprites.Sort((s1, s2) => s1.X.CompareTo(s2.X));
+
+			// Used to check if pixel already drawn
+			bool[] drawn = new bool[160];
 
 			foreach (var sprite in sprites)
 			{
@@ -497,8 +500,8 @@ namespace SpecBoy
 				{
 					short currentPixel = (short)(sprite.X + tilePixel);
 
-					// Pixel off screen?
-					if (currentPixel < 0)
+					// Pixel off screen or already drawn?
+					if (currentPixel < 0 || drawn[currentPixel])
 					{
 						continue;
 					}
@@ -507,12 +510,6 @@ namespace SpecBoy
 					if (currentPixel >= 160)
 					{
 						break;
-					}
-
-					// Lower sprite.x has priority, but ignore if previous pixel was transparent
-					if (minX[currentPixel] != 0 && minX[currentPixel] <= sprite.X + 100 && scanlineBuffer[currentPixel] != 0)
-					{
-						continue;
 					}
 
 					byte tileX = (byte)(sprite.XFlip ? 7 - tilePixel : tilePixel);
@@ -525,7 +522,7 @@ namespace SpecBoy
 					if ((!sprite.Priority || scanlineBuffer[currentPixel] == 0) && colour != 0)
 					{
 						scanlineBuffer[currentPixel] = GetColourFromPalette(colour, pal);
-						minX[currentPixel] = sprite.X + 100;
+						drawn[currentPixel] = true;
 					}
 				}
 			}
