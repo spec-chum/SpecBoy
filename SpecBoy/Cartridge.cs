@@ -6,8 +6,8 @@ namespace SpecBoy
 {
 	class Cartridge
 	{
-		public ReadDelegate ReadByte;
-		public WriteDelegate WriteByte;
+		public Func<int, byte> ReadByte;
+		public Action<int, byte> WriteByte;
 
 		private readonly int[] ramSizes = { 0, 2, 8, 32, 128, 64 };
 		private readonly int bankLimitMask;
@@ -24,9 +24,6 @@ namespace SpecBoy
 		private bool ramEnabled;
 		private bool hasBattery;
 		private bool hasRam;
-
-		public delegate byte ReadDelegate(int address);
-		public delegate void WriteDelegate(int address, byte value);
 
 		private enum CartType : byte
 		{
