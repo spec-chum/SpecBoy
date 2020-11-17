@@ -946,11 +946,13 @@ namespace SpecBoy
 
 		private void Adc(byte value)
 		{
-			int result = (A + value + (carry ? 1 : 0));
+			int cc = carry.ToInt();
+
+			int result = (A + value + cc);
 
 			zero = (byte)result == 0;
 			negative = false;
-			halfCarry = (A & 0x0f) + (value & 0x0f) + (carry ? 1 : 0) > 0x0f;
+			halfCarry = (A & 0x0f) + (value & 0x0f) + cc > 0x0f;
 			carry = result > 255;
 
 			A = (byte)result;
@@ -1019,11 +1021,13 @@ namespace SpecBoy
 
 		private void Sbc(byte value)
 		{
-			int result = (A - value - (carry ? 1 : 0));
+			int cc = carry.ToInt();
+
+			int result = (A - value - cc);
 
 			zero = (byte)result == 0;
 			negative = true;
-			halfCarry = ((A & 0x0f) - (carry ? 1 : 0) < (value & 0x0f));
+			halfCarry = ((A & 0x0f) - cc) < (value & 0x0f);
 			carry = result < 0;
 
 			A = (byte)result;
@@ -1079,10 +1083,10 @@ namespace SpecBoy
 
 		private byte Rl(byte value)
 		{
-			var cc = carry;
+			int cc = carry.ToInt();
 
 			carry = (value & 0x80) != 0;
-			value = (byte)((value << 1) | (cc ? 1 : 0));
+			value = (byte)((value << 1) | cc);
 
 			zero = value == 0;
 			negative = false;
@@ -1093,10 +1097,10 @@ namespace SpecBoy
 
 		private byte Rr(byte value)
 		{
-			var cc = carry;
+			int cc = carry.ToInt();
 
 			carry = (value & 1) != 0;
-			value = (byte)((value >> 1) | (cc ? (1 << 7) : 0));
+			value = (byte)((value >> 1) | (cc << 7));
 
 			zero = value == 0;
 			negative = false;

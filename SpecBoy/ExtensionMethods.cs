@@ -31,13 +31,13 @@ namespace SpecBoy
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int ToInt(this bool value)
 		{
-			return value ? 1 : 0;
+			return Unsafe.As<bool, int>(ref value);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static int ToIntPower(this bool value, int bitShiftAmount)
 		{
-			return value ? (1 << bitShiftAmount) : 0;
+			return Unsafe.As<bool, int>(ref value) << bitShiftAmount;
 		}
 	}
 }
