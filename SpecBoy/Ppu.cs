@@ -2,7 +2,6 @@
 using SFML.System;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D

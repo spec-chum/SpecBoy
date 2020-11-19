@@ -21,7 +21,7 @@ namespace SpecBoy
 		public Gameboy(string romName)
 		{
 			window = new RenderWindow(new VideoMode(160 * scale, 144 * scale), "SpecBoy", Styles.Default);
-			window.SetFramerateLimit(0);
+			window.SetFramerateLimit(60);
 			//window.SetVerticalSyncEnabled(false);
 
 			timers = new Timers();
@@ -38,6 +38,13 @@ namespace SpecBoy
 			bool logging = false;
 
 			window.Closed += (s, e) => window.Close();
+
+			// Timer starts 4t before CPU
+			timers.Tick();
+
+			// First CPU instruction lags by 4t so tick other components to compensate
+			timers.Tick();
+			ppu.Tick();
 
 			while (window.IsOpen)
 			{
