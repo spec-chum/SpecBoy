@@ -376,7 +376,7 @@ namespace SpecBoy
 			bool windowDrawn = false;
 			bool canRenderWindow = Wy <= Ly && lcdc.WindowEnabled;
 
-			for (int x = 0; x < 160; x++)
+			for (int x = 0; x < scanlineBuffer.Length; x++)
 			{
 				// Colour is 0 if BG Priority bit not set
 				if (lcdc.BgEnabled)
@@ -539,7 +539,7 @@ namespace SpecBoy
 
 			var scanline = MemoryMarshal.Cast<byte, uint>(new Span<byte>(pixels, Ly * (160 * sizeof(uint)), 160 * sizeof(uint)));
 
-			for (int i = 0; i < 160; i++)
+			for (int i = 0; i < scanline.Length; i++)
 			{
 				scanline[i] = colours[scanlineBuffer[i]];
 			}

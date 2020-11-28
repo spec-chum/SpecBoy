@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ObjectLayoutInspector" Version="0.1.2" />
     <PackageReference Include="SFML.Net" Version="2.5.0" />
   </ItemGroup>
 

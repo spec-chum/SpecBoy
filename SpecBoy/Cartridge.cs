@@ -68,6 +68,7 @@ namespace SpecBoy
 			romBank = 1;
 			bankLimitMask = (romSize >> 4) - 1;
 		}
+
 		private void GetRomInfo()
 		{
 			Console.Write("ROM name: ");
@@ -149,10 +150,7 @@ namespace SpecBoy
 			return rom[address];
 		}
 
-		private void WriteByteRomOnly(int address, byte value)
-		{
-			return;
-		}
+		private void WriteByteRomOnly(int address, byte value) {}
 
 		private byte ReadByteMbc1(int address)
 		{

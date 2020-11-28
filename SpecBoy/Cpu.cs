@@ -798,21 +798,28 @@ namespace SpecBoy
 
 		private ushort IncR16(int r16)
 		{
-			ushort value = (ushort)(GetR16(r16) + 1);
+			ushort result = GetR16(r16);
+			result++;
+
 			CycleTick();
-			return value;
+
+			return result;
 		}
 
 		private ushort DecR16(int r16)
 		{
-			ushort value = (ushort)(GetR16(r16) - 1);
+			ushort result = GetR16(r16);
+			result--;
+
 			CycleTick();
-			return value;
+
+			return result;
 		}
 
 		private void Push(ushort address)
 		{
 			CycleTick();
+
 			SP--;
 			WriteByte(SP, (byte)(address >> 8));
 			SP--;

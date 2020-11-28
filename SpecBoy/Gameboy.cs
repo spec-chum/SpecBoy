@@ -21,7 +21,7 @@ namespace SpecBoy
 		public Gameboy(string romName)
 		{
 			window = new RenderWindow(new VideoMode(160 * scale, 144 * scale), "SpecBoy", Styles.Default);
-			window.SetFramerateLimit(60);
+			window.SetFramerateLimit(0);
 			//window.SetVerticalSyncEnabled(false);
 
 			timers = new Timers();
