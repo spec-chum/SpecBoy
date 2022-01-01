@@ -161,10 +161,10 @@ namespace SpecBoy
 				var n when n <= 0x3fff && !bankingMode => rom[address],
 
 				// ROM bank0 - Banked
-				var n when n <= 0x3fff => rom[0x4000 * (bankHighBits & bankLimitMask) + address],
+				<= 0x3fff => rom[0x4000 * (bankHighBits & bankLimitMask) + address],
 
 				// ROM bank n
-				var n when n <= 0x7fff => rom[0x4000 * ((romBank | bankHighBits) & bankLimitMask) + (address & 0x3fff)],
+				<= 0x7fff => rom[0x4000 * ((romBank | bankHighBits) & bankLimitMask) + (address & 0x3fff)],
 
 				// Cartridge RAM - Non-banked
 				var n when n >= 0xa000 && n <= 0xbfff && ramEnabled && !bankingMode => ram.ReadByte(address & 0x1fff),
@@ -181,12 +181,12 @@ namespace SpecBoy
 			switch (address)
 			{
 				// Enable/Disable RAM
-				case var n when n <= 0x1fff:
+				case <= 0x1fff:
 					ramEnabled = hasRam && (value & 0x0f) == 0x0a;
 					break;
 
 				// ROM bank n
-				case var n when n <= 0x3fff:
+				case <= 0x3fff:
 					romBank = (value & 0x1f);
 
 					if (romBank == 0)
@@ -197,7 +197,7 @@ namespace SpecBoy
 					break;
 
 				// RAM bank or ROM bank high bits
-				case var n when n <= 0x5fff:
+				case <= 0x5fff:
 					if (ramSize >= 32)
 					{
 						ramBank = value & 3;
@@ -207,7 +207,7 @@ namespace SpecBoy
 					break;
 
 				// Bank mode select
-				case var n when n <= 0x7fff:
+				case <= 0x7fff:
 					bankingMode = (value & 1) == 1;
 					break;
 
@@ -229,10 +229,10 @@ namespace SpecBoy
 		private byte ReadByteMbc3(int address) => address switch
 		{
 			// ROM bank0
-			var n when n <= 0x3fff => rom[address],
+			<= 0x3fff => rom[address],
 
 			// ROM bank n
-			var n when n <= 0x7fff => rom[romBank + (address & 0x3fff)],
+			<= 0x7fff => rom[romBank + (address & 0x3fff)],
 
 			// Cartridge RAM
 			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram.ReadByte(ramBank + (address & 0x1fff)),
@@ -245,12 +245,12 @@ namespace SpecBoy
 			switch (address)
 			{
 				// Enable/Disable RAM
-				case var n when n <= 0x1fff:
+				case <= 0x1fff:
 					ramEnabled = hasRam && (value & 0x0f) == 0x0a;
 					break;
 
 				// ROM bank n
-				case var n when n <= 0x3fff:
+				case <= 0x3fff:
 					romBank = value & 0x7f;
 
 					if (romBank == 0)
@@ -263,7 +263,7 @@ namespace SpecBoy
 					break;
 
 				// RAM bank
-				case var n when n <= 0x5fff:
+				case <= 0x5fff:
 					if (ramSize >= 32)
 					{
 						ramBank = (value & 3) * 0x2000;

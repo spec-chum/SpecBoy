@@ -945,7 +945,7 @@ namespace SpecBoy
 
 			zero = result == 0;
 			negative = false;
-			halfCarry = (A & 0x0f) + (value & 0x0f) > 0x0f;
+			halfCarry = (result & 0x0f) < (A & 0x0f);
 			carry = result < A;
 
 			A = result;
@@ -959,7 +959,7 @@ namespace SpecBoy
 
 			zero = (byte)result == 0;
 			negative = false;
-			halfCarry = (A & 0x0f) + (value & 0x0f) + cc > 0x0f;
+			halfCarry = (result & 0x0f) < (A & 0x0f) + cc;
 			carry = result > 255;
 
 			A = (byte)result;
@@ -971,7 +971,7 @@ namespace SpecBoy
 			ushort result = (ushort)(HL + value);
 
 			negative = false;
-			halfCarry = (HL & 0xfff) + (value & 0xfff) > 0xfff;
+			halfCarry = (result & 0xfff) < (HL & 0xfff);
 			carry = result < HL;
 
 			HL = result;
@@ -987,8 +987,8 @@ namespace SpecBoy
 
 			zero = false;
 			negative = false;
-			halfCarry = ((result) & 0x0f) < (cachedSP & 0x0f);
-			carry = ((result) & 0xff) < (cachedSP & 0xff);
+			halfCarry = (result & 0x0f) < (cachedSP & 0x0f);
+			carry = (result & 0xff) < (cachedSP & 0xff);
 
 			HL = result;
 
@@ -1003,8 +1003,8 @@ namespace SpecBoy
 
 			zero = false;
 			negative = false;
-			halfCarry = ((result) & 0x0f) < (cachedSP & 0x0f);
-			carry = ((result) & 0xff) < (cachedSP & 0xff);
+			halfCarry = (result & 0x0f) < (cachedSP & 0x0f);
+			carry = (result & 0xff) < (cachedSP & 0xff);
 
 			SP = result;
 

@@ -368,7 +368,7 @@ namespace SpecBoy
 		private void RenderBackground()
 		{
 			int colour = 0;
-			ushort tileData = (ushort)(lcdc.TileDataSelect ? 0x8000 : 0x8800);
+			ushort tileData = (ushort)(lcdc.TileDataSelect ? 0x8000 : 0x9000);
 			ushort bgTilemap = (ushort)(lcdc.BgTileMapSelect ? 0x9c00 : 0x9800);
 			ushort windowTilemap = (ushort)(lcdc.WindowTileMapSelect ? 0x9c00 : 0x9800);
 			short winX = (short)(Wx - 7);
@@ -418,7 +418,7 @@ namespace SpecBoy
 					}
 					else
 					{
-						tileLocation = (ushort)(tileData + 0x0800 + ((sbyte)tileIndex * 16) + (tileY * 2));
+						tileLocation = (ushort)(tileData + ((sbyte)tileIndex * 16) + (tileY * 2));
 					}
 
 					byte lowByte = ReadVRamInternal(tileLocation);

@@ -84,8 +84,8 @@ namespace SpecBoy
 				{
 					// External bus: $0000-$7FFF, $A000-$FDFF
 					// Video ram bus: $8000-$9FFF
-					var n when n <= 0x7fff || (n >= 0xa000 && n <= 0xfdff) => 0,
-					var n when n >= 0x8000 && n <= 0x9fff => 1,
+					<= 0x7fff or (>= 0xa000 and <= 0xfdff) => 0,
+					>= 0x8000 and <= 0x9fff => 1,
 					_ => 2,
 				};
 			}
@@ -93,25 +93,25 @@ namespace SpecBoy
 			return address switch
 			{
 				// ROM
-				var n when n <= 0x7fff => cartridge.ReadByte(address),
+				<= 0x7fff => cartridge.ReadByte(address),
 
 				// VRAM
-				var n when n <= 0x9fff => ppu.ReadVRam(address & 0x1fff),
+				<= 0x9fff => ppu.ReadVRam(address & 0x1fff),
 
 				// External RAM
-				var n when n <= 0xbfff => cartridge.ReadByte(address),
+				<= 0xbfff => cartridge.ReadByte(address),
 
 				// Work RAM banks
-				var n when n <= 0xdfff => Mem[address],
+				<= 0xdfff => Mem[address],
 
 				// Work RAM mirrors
-				var n when n <= 0xfdff => Mem[address - 0x2000],
+				<= 0xfdff => Mem[address - 0x2000],
 
 				// OAM
-				var n when n <= 0xfe9f => ppu.ReadOam(address & 0xff),
+				<= 0xfe9f => ppu.ReadOam(address & 0xff),
 
 				// Not usable, but returns 0 not 0xff
-				var n when n <= 0xfeff => 0,
+				<= 0xfeff => 0,
 
 				// IO Registers
 				0xff00 => joypad.JoyP,
@@ -129,7 +129,7 @@ namespace SpecBoy
 				0xff07 => (byte)(timers.Tac | 0xf8),
 
 				// Unused
-				var n when n <= 0xff0e => 0xff,
+				<= 0xff0e => 0xff,
 
 				0xff0f => (byte)(Interrupts.IF | 0xe0),
 
@@ -175,10 +175,10 @@ namespace SpecBoy
 				0xff4b => ppu.Wx,
 
 				// Unused
-				var n when n >= 0xff4c && n <= 0xff7f => 0xff,
+				>= 0xff4c and <= 0xff7f => 0xff,
 
 				// HRAM
-				var n when n <= 0xfffe => Mem[address],
+				<= 0xfffe => Mem[address],
 
 				0xffff => Interrupts.IE,
 
@@ -193,7 +193,7 @@ namespace SpecBoy
 			switch (address)
 			{
 				// ROM
-				case var n when n <= 0x7fff:
+				case <= 0x7fff:
 					if (!BootRomEnabled)
 					{
 						cartridge.WriteByte(address, value);
@@ -201,27 +201,27 @@ namespace SpecBoy
 					break;
 
 				// VRAM
-				case var n when n <= 0x9fff:
+				case <= 0x9fff:
 					ppu.WriteVRam(address & 0x1fff, value);
 					break;
 
 				// External RAM
-				case var n when n <= 0xbfff:
+				case <= 0xbfff:
 					cartridge.WriteByte(address, value);
 					break;
 
 				// Work RAM
-				case var n when n <= 0xdfff:
+				case <= 0xdfff:
 					Mem[address] = value;
 					break;
 
 				// Work RAM mirrors
-				case var n when n <= 0xfdff:
+				case <= 0xfdff:
 					Mem[address - 0x2000] = value;
 					break;
 
 				// OAM
-				case var n when n <= 0xfe9f:
+				case <= 0xfe9f:
 					if (dmaCycles == 0 && dmaCycles <= 160)
 					{
 						ppu.WriteOam(address & 0xff, value);
@@ -310,7 +310,7 @@ namespace SpecBoy
 					break;
 
 				// HRAM
-				case var n when n >= 0xff80 && n <= 0xfffe:
+				case >= 0xff80 and <= 0xfffe:
 					Mem[address] = value;
 					break;
 
