@@ -338,42 +338,42 @@ namespace SpecBoy
 					break;
 
 				// ADD A, r8
-				case var n when n >= 0x80 && n <= 0x87:
+				case >= 0x80 and <= 0x87:
 					Add(GetR8(opcode & 0x07));
 					break;
 
 				// ADC A, r8
-				case var n when n >= 0x88 && n <= 0x8f:
+				case >= 0x88 and <= 0x8f:
 					Adc(GetR8(opcode & 0x07));
 					break;
 
 				// SUB A, r8
-				case var n when n >= 0x90 && n <= 0x97:
+				case >= 0x90 and <= 0x97:
 					Sub(GetR8(opcode & 0x07));
 					break;
 
 				// SBC A, r8
-				case var n when n >= 0x98 && n <= 0x9f:
+				case >= 0x98 and <= 0x9f:
 					Sbc(GetR8(opcode & 0x07));
 					break;
 
 				// AND A, r8
-				case var n when n >= 0xa0 && n <= 0xa7:
+				case >= 0xa0 and <= 0xa7:
 					And(GetR8(opcode & 0x07));
 					break;
 
 				// XOR A, r8
-				case var n when n >= 0xa8 && n <= 0xaf:
+				case >= 0xa8 and <= 0xaf:
 					Xor(GetR8(opcode & 0x07));
 					break;
 
 				// OR A, r8
-				case var n when n >= 0xb0 && n <= 0xb7:
+				case >= 0xb0 and <= 0xb7:
 					Or(GetR8(opcode & 0x07));
 					break;
 
 				// CP r8
-				case var n when n >= 0xb8 && n <= 0xbf:
+				case >= 0xb8 and <= 0xbf:
 					Cp(GetR8(opcode & 0x07));
 					break;
 
@@ -411,11 +411,6 @@ namespace SpecBoy
 				case 0xf5:
 					regId = (opcode >> 4) & 0x03;
 					Push(GetR16(regId, false));
-					break;
-
-				// ADD A, r8
-				case var n when n >= 0xb0 && n <= 0xb7:
-					Add(GetR8(opcode & 0x7));
 					break;
 
 				// ADD A, u8
@@ -566,57 +561,57 @@ namespace SpecBoy
 			switch (opcode)
 			{
 				// RLC r8
-				case var n when n <= 0x07:
+				case <= 0x07:
 					SetR8(regId, Rlc(GetR8(regId)));
 					break;
 
 				// RRC r8
-				case var n when n <= 0x0f:
+				case <= 0x0f:
 					SetR8(regId, Rrc(GetR8(regId)));
 					break;
 
 				// RL r8
-				case var n when n <= 0x17:
+				case <= 0x17:
 					SetR8(regId, Rl(GetR8(regId)));
 					break;
 
 				// RR r8
-				case var n when n <= 0x1f:
+				case <= 0x1f:
 					SetR8(regId, Rr(GetR8(regId)));
 					break;
 
 				// SLA r8
-				case var n when n <= 0x27:
+				case <= 0x27:
 					SetR8(regId, Sla(GetR8(regId)));
 					break;
 
 				// SRA r8
-				case var n when n <= 0x2f:
+				case <= 0x2f:
 					SetR8(regId, Sra(GetR8(regId)));
 					break;
 
 				// SWAP r8
-				case var n when n <= 0x37:
+				case <= 0x37:
 					SetR8(regId, Swap(GetR8(regId)));
 					break;
 
 				// SRL r8
-				case var n when n <= 0x3f:
+				case <= 0x3f:
 					SetR8(regId, Srl(GetR8(regId)));
 					break;
 
 				// BIT
-				case var n when n <= 0x7f:
+				case <= 0x7f:
 					Bit(GetR8(regId), (opcode >> 3) & 0x07);
 					break;
 
 				// RES
-				case var n when n <= 0xbf:
+				case <= 0xbf:
 					SetR8(regId, Res(GetR8(regId), (opcode >> 3) & 0x07));
 					break;
 
 				// SET
-				case var n when n <= 0xff:
+				case <= 0xff:
 					SetR8(regId, Set(GetR8(regId), (opcode >> 3) & 0x07));
 					break;
 
