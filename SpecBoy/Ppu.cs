@@ -1,8 +1,8 @@
-﻿using SFML.Graphics;
+﻿using Microsoft.Toolkit.HighPerformance;
+using SFML.Graphics;
 using SFML.System;
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
@@ -537,7 +537,7 @@ namespace SpecBoy
 			RenderBackground();
 			RenderSprites();
 
-			var scanline = MemoryMarshal.Cast<byte, uint>(new Span<byte>(pixels, Ly * (160 * sizeof(uint)), 160 * sizeof(uint)));
+			var scanline = pixels.AsSpan(Ly * ScreenWidth * sizeof(uint), ScreenWidth * sizeof(uint)).Cast<byte, uint>();
 
 			for (int i = 0; i < scanline.Length; i++)
 			{
