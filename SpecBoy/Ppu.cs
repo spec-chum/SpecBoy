@@ -3,6 +3,7 @@ using SFML.Graphics;
 using SFML.System;
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
@@ -43,7 +44,7 @@ namespace SpecBoy
 		private readonly Texture texture;
 		private readonly SfmlSprite framebuffer;
 
-		private readonly int[] scanlineBuffer;
+		private readonly uint[] scanlineBuffer;
 		private readonly byte[] pixels;
 		private readonly byte[] vRam;
 		private readonly byte[] oam;
@@ -61,7 +62,7 @@ namespace SpecBoy
 			vRam = new byte[0x2000];
 			oam = new byte[0xa0];
 			pixels = new byte[ScreenWidth * ScreenHeight * sizeof(uint)];
-			scanlineBuffer = new int[160];
+			scanlineBuffer = new uint[ScreenWidth];
 
 			this.window = window;
 			texture = new Texture(ScreenWidth, ScreenHeight);
@@ -469,12 +470,12 @@ namespace SpecBoy
 			sprites.Sort((s1, s2) => s1.X.CompareTo(s2.X));
 
 			// Used to check if pixel already drawn
-			bool[] pixelDrawn = new bool[160];
+			bool[] pixelDrawn = new bool[ScreenWidth];
 
 			foreach (var sprite in sprites)
 			{
 				// Is any of sprite actually visible?
-				if (sprite.X >= 160)
+				if (sprite.X >= ScreenWidth)
 				{
 					continue;
 				}
@@ -504,7 +505,7 @@ namespace SpecBoy
 					{
 						continue;
 					}					
-					else if (currentPixel >= 160)
+					else if (currentPixel >= ScreenWidth)
 					{
 						// Do next sprite if remaining pixels off screen
 						break;
@@ -537,11 +538,13 @@ namespace SpecBoy
 			RenderBackground();
 			RenderSprites();
 
-			var scanline = pixels.AsSpan(Ly * ScreenWidth * sizeof(uint), ScreenWidth * sizeof(uint)).Cast<byte, uint>();
+			const int spanLen = ScreenWidth * sizeof(uint);
+			var pixelsSpan = new Span<byte>(pixels, Ly * spanLen, spanLen).Cast<byte, ulong>();
+			var bufferSpan = new ReadOnlySpan<uint>(scanlineBuffer).Cast<uint, ulong>();
 
-			for (int i = 0; i < scanline.Length; i++)
+			for (int i = 0; i < pixelsSpan.Length; i++)
 			{
-				scanline[i] = colours[scanlineBuffer[i]];
+				pixelsSpan[i] = bufferSpan[i];
 			}
 		}
 
@@ -552,6 +555,6 @@ namespace SpecBoy
 			window.Display();
 		}
 
-		private int GetColourFromPalette(int colour, int palette) => (palette >> (colour << 1)) & 3;
+		private uint GetColourFromPalette(int colour, int palette) => colours[(palette >> (colour << 1)) & 3];
 	}
 }
