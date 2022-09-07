@@ -522,10 +522,13 @@ namespace SpecBoy
 					int colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
 					int pal = sprite.PalNum ? Obp1 : Obp0;
 
+					// Optimise out a bounds check
+					ref var pixelInSpan = ref pixelSpan[currentPixel];
+
 					// Check priority and only draw pixel if not transparent colour
-					if ((!sprite.Priority || pixelSpan[currentPixel] == 0) && colour != 0)
+					if ((!sprite.Priority || pixelInSpan == 0) && colour != 0)
 					{
-						pixelSpan[currentPixel] = GetColourFromPalette(colour, pal);
+						pixelInSpan = GetColourFromPalette(colour, pal);
 						pixelDrawn[currentPixel] = true;
 					}
 				}
