@@ -3,7 +3,6 @@ using SFML.Graphics;
 using SFML.System;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
@@ -23,7 +22,8 @@ namespace SpecBoy
 	{
 		private const int ScreenWidth = 160;
 		private const int ScreenHeight = 144;
-		private const int OamCycles = 80;
+        private const int SpanLen = ScreenWidth * sizeof(uint);
+        private const int OamCycles = 80;
 		private const int LcdTransferCycles = 172;
 		private const int LineTotalCycles = 456;
 
@@ -44,7 +44,6 @@ namespace SpecBoy
 		private readonly Texture texture;
 		private readonly SfmlSprite framebuffer;
 
-		private readonly uint[] scanlineBuffer;
 		private readonly byte[] pixels;
 		private readonly byte[] vRam;
 		private readonly byte[] oam;
@@ -62,7 +61,6 @@ namespace SpecBoy
 			vRam = new byte[0x2000];
 			oam = new byte[0xa0];
 			pixels = new byte[ScreenWidth * ScreenHeight * sizeof(uint)];
-			scanlineBuffer = new uint[ScreenWidth];
 
 			this.window = window;
 			texture = new Texture(ScreenWidth, ScreenHeight);
@@ -366,9 +364,9 @@ namespace SpecBoy
 			return vRam[address & 0x1fff];
 		}
 
-		private void RenderBackground()
+		private void RenderBackground(Span<uint> pixelSpan)
 		{
-			int colour = 0;
+            int colour = 0;
 			ushort tileData = (ushort)(lcdc.TileDataSelect ? 0x8000 : 0x9000);
 			ushort bgTilemap = (ushort)(lcdc.BgTileMapSelect ? 0x9c00 : 0x9800);
 			ushort windowTilemap = (ushort)(lcdc.WindowTileMapSelect ? 0x9c00 : 0x9800);
@@ -377,7 +375,7 @@ namespace SpecBoy
 			bool windowDrawn = false;
 			bool canRenderWindow = Wy <= Ly && lcdc.WindowEnabled;
 
-			for (int x = 0; x < scanlineBuffer.Length; x++)
+			for (int x = 0; x < pixelSpan.Length; x++)
 			{
 				// Colour is 0 if BG Priority bit not set
 				if (lcdc.BgEnabled)
@@ -428,7 +426,7 @@ namespace SpecBoy
 					colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
 				}
 
-				scanlineBuffer[x] = GetColourFromPalette(colour, Bgp);
+				pixelSpan[x] = GetColourFromPalette(colour, Bgp);
 			}
 
 			// Only update window Y pos if window was drawn
@@ -438,10 +436,11 @@ namespace SpecBoy
 			}
 		}
 
-		private void RenderSprites()
+		private void RenderSprites(Span<uint> pixelSpan)
 		{
-			// Just return if sprites not enabled
-			if (!lcdc.SpritesEnabled)
+
+            // Just return if sprites not enabled
+            if (!lcdc.SpritesEnabled)
 			{
 				return;
 			}
@@ -495,7 +494,7 @@ namespace SpecBoy
 
 				byte lowByte = ReadVRamInternal(tileIndex);
 				byte highByte = ReadVRamInternal(tileIndex + 1);
-
+				
 				for (int tilePixel = 0; tilePixel < 8; tilePixel++)
 				{
 					short currentPixel = (short)(sprite.X + tilePixel);
@@ -524,9 +523,9 @@ namespace SpecBoy
 					int pal = sprite.PalNum ? Obp1 : Obp0;
 
 					// Check priority and only draw pixel if not transparent colour
-					if ((!sprite.Priority || scanlineBuffer[currentPixel] == 0) && colour != 0)
+					if ((!sprite.Priority || pixelSpan[currentPixel] == 0) && colour != 0)
 					{
-						scanlineBuffer[currentPixel] = GetColourFromPalette(colour, pal);
+						pixelSpan[currentPixel] = GetColourFromPalette(colour, pal);
 						pixelDrawn[currentPixel] = true;
 					}
 				}
@@ -535,17 +534,9 @@ namespace SpecBoy
 
 		private void RenderScanline()
 		{
-			RenderBackground();
-			RenderSprites();
-
-			const int spanLen = ScreenWidth * sizeof(uint);
-			var pixelsSpan = new Span<byte>(pixels, Ly * spanLen, spanLen).Cast<byte, ulong>();
-			var bufferSpan = new ReadOnlySpan<uint>(scanlineBuffer).Cast<uint, ulong>();
-
-			for (int i = 0; i < pixelsSpan.Length; i++)
-			{
-				pixelsSpan[i] = bufferSpan[i];
-			}
+            var pixelSpan = new Span<byte>(pixels, Ly * SpanLen, SpanLen).Cast<byte, uint>();
+            RenderBackground(pixelSpan);
+			RenderSprites(pixelSpan);
 		}
 
 		private void RenderFrame()
