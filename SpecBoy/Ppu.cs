@@ -438,18 +438,17 @@ namespace SpecBoy
 
 		private void RenderSprites(Span<uint> pixelSpan)
 		{
-
 			// Just return if sprites not enabled
 			if (!lcdc.SpritesEnabled)
 			{
 				return;
 			}
 
-			var sprites = new List<Sprite>();
+			var sprites = new List<Sprite>(10);
 			int spriteSize = lcdc.SpriteSize ? 16 : 8;
 
 			// Search OAM for sprites that appear on scanline (up to 10)
-			for (int i = 0; i < 0xa0 && sprites.Count < 10; i += 4)
+			for (int i = 0; i < oam.Length && sprites.Count < 10; i += 4)
 			{
 				short spriteStartY = (short)(oam[i] - 16);
 				short spriteEndY = (short)(spriteStartY + spriteSize);
@@ -469,10 +468,12 @@ namespace SpecBoy
 			sprites.Sort((s1, s2) => s1.X.CompareTo(s2.X));
 
 			// Used to check if pixel already drawn
-			bool[] pixelDrawn = new bool[ScreenWidth];
+			var pixelDrawn = new bool[ScreenWidth];
 
-			foreach (var sprite in sprites)
+			for (int i = 0; i < sprites.Count; i++)
 			{
+				var sprite = sprites[i];
+
 				// Is any of sprite actually visible?
 				if (sprite.X >= ScreenWidth)
 				{
@@ -495,6 +496,9 @@ namespace SpecBoy
 				byte lowByte = ReadVRamInternal(tileIndex);
 				byte highByte = ReadVRamInternal(tileIndex + 1);
 				
+				// Set sprite palette
+				int pal = sprite.PalNum ? Obp1 : Obp0;
+
 				for (int tilePixel = 0; tilePixel < 8; tilePixel++)
 				{
 					short currentPixel = (short)(sprite.X + tilePixel);
@@ -520,7 +524,6 @@ namespace SpecBoy
 
 					// Get colour
 					int colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
-					int pal = sprite.PalNum ? Obp1 : Obp0;
 
 					// Optimise out a bounds check
 					ref var pixelInSpan = ref pixelSpan[currentPixel];
