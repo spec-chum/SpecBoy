@@ -22,8 +22,8 @@ namespace SpecBoy
 	{
 		private const int ScreenWidth = 160;
 		private const int ScreenHeight = 144;
-        private const int SpanLen = ScreenWidth * sizeof(uint);
-        private const int OamCycles = 80;
+		private const int SpanLen = ScreenWidth * sizeof(uint);
+		private const int OamCycles = 80;
 		private const int LcdTransferCycles = 172;
 		private const int LineTotalCycles = 456;
 
@@ -366,7 +366,7 @@ namespace SpecBoy
 
 		private void RenderBackground(Span<uint> pixelSpan)
 		{
-            int colour = 0;
+			int colour = 0;
 			ushort tileData = (ushort)(lcdc.TileDataSelect ? 0x8000 : 0x9000);
 			ushort bgTilemap = (ushort)(lcdc.BgTileMapSelect ? 0x9c00 : 0x9800);
 			ushort windowTilemap = (ushort)(lcdc.WindowTileMapSelect ? 0x9c00 : 0x9800);
@@ -439,8 +439,8 @@ namespace SpecBoy
 		private void RenderSprites(Span<uint> pixelSpan)
 		{
 
-            // Just return if sprites not enabled
-            if (!lcdc.SpritesEnabled)
+			// Just return if sprites not enabled
+			if (!lcdc.SpritesEnabled)
 			{
 				return;
 			}
@@ -534,8 +534,8 @@ namespace SpecBoy
 
 		private void RenderScanline()
 		{
-            var pixelSpan = new Span<byte>(pixels, Ly * SpanLen, SpanLen).Cast<byte, uint>();
-            RenderBackground(pixelSpan);
+			var pixelSpan = new Span<byte>(pixels, Ly * SpanLen, SpanLen).Cast<byte, uint>();
+			RenderBackground(pixelSpan);
 			RenderSprites(pixelSpan);
 		}
 
