@@ -3,6 +3,8 @@ using SFML.Graphics;
 using SFML.System;
 using System;
 using System.Collections.Generic;
+//using System.Runtime.CompilerServices;
+//using System.Runtime.InteropServices;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
@@ -27,7 +29,7 @@ namespace SpecBoy
 		private const int LcdTransferCycles = 172;
 		private const int LineTotalCycles = 456;
 
-		public readonly uint[] colours = { 0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff };
+		private readonly uint[] colours = { 0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff };
 
 		public byte Scy;
 		public byte Scx;
@@ -303,13 +305,16 @@ namespace SpecBoy
 					Ly = 0;
 					stat.CompareLyc(153);
 					break;
+
 				case 8:
 					stat.LyCompareFlag = false;
 					break;
+
 				case 12:
 					// Now cmp Ly == Lyc when Ly is 0
 					stat.CompareLyc(0);
 					break;
+
 				case LineTotalCycles:
 					// We're done
 					onLine153 = false;
@@ -359,14 +364,20 @@ namespace SpecBoy
 			return (value + 3) & -4;
 		}
 
-		private byte ReadVRamInternal(int address)
+		private ref byte ReadVRamInternal(int address)
 		{
-			return vRam[address & 0x1fff];
+			return ref vRam.DangerousGetReferenceAt(address & 0x1fff);
 		}
 
 		private void RenderBackground(Span<uint> pixelSpan)
 		{
-			int colour = 0;
+			// Early exit if background not enabled
+			if (!lcdc.BgEnabled)
+			{
+				pixelSpan.Fill(0);
+				return;
+			}
+
 			ushort tileData = (ushort)(lcdc.TileDataSelect ? 0x8000 : 0x9000);
 			ushort bgTilemap = (ushort)(lcdc.BgTileMapSelect ? 0x9c00 : 0x9800);
 			ushort windowTilemap = (ushort)(lcdc.WindowTileMapSelect ? 0x9c00 : 0x9800);
@@ -377,55 +388,50 @@ namespace SpecBoy
 
 			for (int x = 0; x < pixelSpan.Length; x++)
 			{
-				// Colour is 0 if BG Priority bit not set
-				if (lcdc.BgEnabled)
+				ushort tilemap;
+				byte tx;
+				byte ty;
+
+				// Render window if enabled and visible
+				if (canRenderWindow && winX <= x)
 				{
-					ushort tilemap;
-					byte tx;
-					byte ty;
+					windowDrawn = true;
 
-					// Render window if enabled and visible
-					if (canRenderWindow && winX <= x)
-					{
-						windowDrawn = true;
+					tx = (byte)(x - winX);
+					ty = winY;
 
-						tx = (byte)(x - winX);
-						ty = winY;
+					tilemap = windowTilemap;
+				}
+				// Or render background
+				else
+				{
+					windowDrawn = false;
 
-						tilemap = windowTilemap;
-					}
-					// Or render background
-					else
-					{
-						windowDrawn = false;
+					tx = (byte)(x + Scx);
+					ty = (byte)(Ly + Scy);
 
-						tx = (byte)(x + Scx);
-						ty = (byte)(Ly + Scy);
-
-						tilemap = bgTilemap;
-					}
-
-					byte tileIndex = ReadVRamInternal(tilemap + (ty / 8 * 32) + (tx / 8));
-
-					byte tileX = (byte)(tx & 7);
-					byte tileY = (byte)(ty & 7);
-
-					ushort tileLocation;
-					if (tileData == 0x8000)
-					{
-						tileLocation = (ushort)(tileData + (tileIndex * 16) + (tileY * 2));
-					}
-					else
-					{
-						tileLocation = (ushort)(tileData + ((sbyte)tileIndex * 16) + (tileY * 2));
-					}
-
-					byte lowByte = ReadVRamInternal(tileLocation);
-					byte highByte = ReadVRamInternal(tileLocation + 1);
-
-					colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
+					tilemap = bgTilemap;
 				}
 
+				ref byte tileIndex = ref ReadVRamInternal(tilemap + (ty / 8 * 32) + (tx / 8));
+
+				byte tileX = (byte)(tx & 7);
+				byte tileY = (byte)(ty & 7);
+
+				ushort tileLocation;
+				if (tileData == 0x8000)
+				{
+					tileLocation = (ushort)(tileData + (tileIndex * 16) + (tileY * 2));
+				}
+				else
+				{
+					tileLocation = (ushort)(tileData + ((sbyte)tileIndex * 16) + (tileY * 2));
+				}
+
+				ref byte lowByte = ref ReadVRamInternal(tileLocation);
+				ref byte highByte = ref ReadVRamInternal(tileLocation + 1);
+
+				int colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
 				pixelSpan[x] = GetColourFromPalette(colour, Bgp);
 			}
 
@@ -465,14 +471,17 @@ namespace SpecBoy
 				return;
 			}
 
+			// Sort sprites in ascending X co-ord
 			sprites.Sort((s1, s2) => s1.X.CompareTo(s2.X));
 
+			var spriteSpan = sprites.AsSpan();
+
 			// Used to check if pixel already drawn
-			var pixelDrawn = new bool[ScreenWidth];
+			Span<bool> pixelDrawn = stackalloc bool[ScreenWidth];
 
 			for (int i = 0; i < sprites.Count; i++)
 			{
-				var sprite = sprites[i];
+				ref var sprite = ref spriteSpan.DangerousGetReferenceAt(i);
 
 				// Is any of sprite actually visible?
 				if (sprite.X >= ScreenWidth)
@@ -493,8 +502,8 @@ namespace SpecBoy
 					tileIndex += (ushort)((sprite.TileNum & 0xfe) * 16 + (tileY * 2));
 				}
 
-				byte lowByte = ReadVRamInternal(tileIndex);
-				byte highByte = ReadVRamInternal(tileIndex + 1);
+				ref byte lowByte = ref ReadVRamInternal(tileIndex);
+				ref byte highByte = ref ReadVRamInternal(tileIndex + 1);
 				
 				// Set sprite palette
 				int pal = sprite.PalNum ? Obp1 : Obp0;
@@ -514,8 +523,11 @@ namespace SpecBoy
 						break;
 					}
 
+					// Optimise out some bounds checks
+					ref var pixelDrawnRef = ref pixelDrawn.DangerousGetReferenceAt(currentPixel);
+
 					// Already drawn?
-					if (pixelDrawn[currentPixel])
+					if (pixelDrawnRef)
 					{
 						continue;
 					}
@@ -525,14 +537,13 @@ namespace SpecBoy
 					// Get colour
 					int colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
 
-					// Optimise out a bounds check
-					ref var pixelInSpan = ref pixelSpan[currentPixel];
+					ref var currentPixelRef = ref pixelSpan.DangerousGetReferenceAt(currentPixel);
 
 					// Check priority and only draw pixel if not transparent colour
-					if ((!sprite.Priority || pixelInSpan == 0) && colour != 0)
+					if ((!sprite.Priority || currentPixelRef == 0) && colour != 0)
 					{
-						pixelInSpan = GetColourFromPalette(colour, pal);
-						pixelDrawn[currentPixel] = true;
+						currentPixelRef = GetColourFromPalette(colour, pal);
+						pixelDrawnRef = true;
 					}
 				}
 			}
@@ -552,6 +563,9 @@ namespace SpecBoy
 			window.Display();
 		}
 
-		private uint GetColourFromPalette(int colour, int palette) => colours[(palette >> (colour << 1)) & 3];
+		private uint GetColourFromPalette(int colour, int palette)
+		{
+			return colours.DangerousGetReferenceAt((palette >> (colour << 1)) & 3);
+		}
 	}
 }

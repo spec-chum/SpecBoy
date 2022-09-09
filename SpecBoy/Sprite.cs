@@ -22,9 +22,9 @@
 
 		public bool Priority { get; }
 
-		public bool XFlip { get; }
-
 		public bool YFlip { get; }
+
+		public bool XFlip { get; }
 
 		public bool PalNum { get; }
 	}
