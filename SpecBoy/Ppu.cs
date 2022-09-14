@@ -3,8 +3,6 @@ using SFML.Graphics;
 using SFML.System;
 using System;
 using System.Collections.Generic;
-//using System.Runtime.CompilerServices;
-//using System.Runtime.InteropServices;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
@@ -374,7 +372,7 @@ namespace SpecBoy
 			// Early exit if background not enabled
 			if (!lcdc.BgEnabled)
 			{
-				pixelSpan.Fill(0);
+				pixelSpan.Fill(GetColourFromPalette(0, Bgp));
 				return;
 			}
 
@@ -537,10 +535,16 @@ namespace SpecBoy
 					// Get colour
 					int colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
 
+					// Move on if pixel is transparent anyway
+					if (colour == 0)
+					{
+						continue;
+					}
+
 					ref var currentPixelRef = ref pixelSpan.DangerousGetReferenceAt(currentPixel);
 
-					// Check priority and only draw pixel if not transparent colour
-					if ((!sprite.Priority || currentPixelRef == 0) && colour != 0)
+					// Check priority or draw over transparent pixel
+					if (!sprite.Priority || currentPixelRef == GetColourFromPalette(0, Bgp))
 					{
 						currentPixelRef = GetColourFromPalette(colour, pal);
 						pixelDrawnRef = true;
