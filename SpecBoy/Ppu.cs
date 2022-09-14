@@ -2,7 +2,6 @@
 using SFML.Graphics;
 using SFML.System;
 using System;
-using System.Drawing;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
