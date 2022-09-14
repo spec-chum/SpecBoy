@@ -2,7 +2,7 @@
 using SFML.Graphics;
 using SFML.System;
 using System;
-using System.Collections.Generic;
+using System.Drawing;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
@@ -448,36 +448,37 @@ namespace SpecBoy
 				return;
 			}
 
-			var sprites = new List<Sprite>(10);
+			Span<Sprite> spriteSpan = stackalloc Sprite[10];
+			int numSprites = 0;
+
 			int spriteSize = lcdc.SpriteSize ? 16 : 8;
 
 			// Search OAM for sprites that appear on scanline (up to 10)
-			for (int i = 0; i < oam.Length && sprites.Count < 10; i += 4)
+			for (int i = 0; i < oam.Length && numSprites < 10; i += 4)
 			{
 				short spriteStartY = (short)(oam[i] - 16);
 				short spriteEndY = (short)(spriteStartY + spriteSize);
 
 				if (spriteStartY <= Ly && Ly < spriteEndY)
 				{
-					sprites.Add(new Sprite(oam[i], oam[i + 1], oam[i + 2], oam[i + 3]));
+					spriteSpan[numSprites] = new Sprite(oam[i], oam[i + 1], oam[i + 2], oam[i + 3]);
+					numSprites++;
 				}
 			}
 
 			// Just return if there are no sprites to draw
-			if (sprites.Count == 0)
+			if (numSprites == 0)
 			{
 				return;
 			}
 
-			// Sort sprites in ascending X co-ord
-			sprites.Sort((s1, s2) => s1.X.CompareTo(s2.X));
-
-			var spriteSpan = sprites.AsSpan();
+			// Sort only the found sprites in ascending X co-ord
+			spriteSpan[..numSprites].Sort((s1, s2) => s1.X.CompareTo(s2.X));
 
 			// Used to check if pixel already drawn
 			Span<bool> pixelDrawn = stackalloc bool[ScreenWidth];
 
-			for (int i = 0; i < sprites.Count; i++)
+			for (int i = 0; i < numSprites; i++)
 			{
 				ref var sprite = ref spriteSpan.DangerousGetReferenceAt(i);
 
