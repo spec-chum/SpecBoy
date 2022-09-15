@@ -2,6 +2,8 @@
 using SFML.Graphics;
 using SFML.System;
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 // Avoid conflict with our Sprite class - I refuse to rename it :D
 using SfmlSprite = SFML.Graphics.Sprite;
@@ -361,9 +363,14 @@ namespace SpecBoy
 			return (value + 3) & -4;
 		}
 
-		private ref byte ReadVRamInternal(int address)
+		private ref byte ReadVRamByteInternal(int address)
 		{
 			return ref vRam.DangerousGetReferenceAt(address & 0x1fff);
+		}
+
+		private ref Mem16 ReadVRamWordInternal(int address)
+		{
+			return ref Unsafe.As<byte, Mem16>(ref vRam.DangerousGetReferenceAt(address & 0x1fff));
 		}
 
 		private void RenderBackground(Span<uint> pixelSpan)
@@ -410,7 +417,7 @@ namespace SpecBoy
 					tilemap = bgTilemap;
 				}
 
-				ref byte tileIndex = ref ReadVRamInternal(tilemap + (ty / 8 * 32) + (tx / 8));
+				ref byte tileIndex = ref ReadVRamByteInternal(tilemap + (ty / 8 * 32) + (tx / 8));
 
 				byte tileX = (byte)(tx & 7);
 				byte tileY = (byte)(ty & 7);
@@ -425,10 +432,9 @@ namespace SpecBoy
 					tileLocation = (ushort)(tileData + ((sbyte)tileIndex * 16) + (tileY * 2));
 				}
 
-				ref byte lowByte = ref ReadVRamInternal(tileLocation);
-				ref byte highByte = ref ReadVRamInternal(tileLocation + 1);
+				ref Mem16 tl = ref ReadVRamWordInternal(tileLocation);
 
-				int colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
+				int colour = (tl.highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (tl.lowByte.IsBitSet(7 - tileX) ? 1 : 0);
 				pixelSpan[x] = GetColourFromPalette(colour, Bgp);
 			}
 
@@ -500,9 +506,8 @@ namespace SpecBoy
 					tileIndex += (ushort)((sprite.TileNum & 0xfe) * 16 + (tileY * 2));
 				}
 
-				ref byte lowByte = ref ReadVRamInternal(tileIndex);
-				ref byte highByte = ref ReadVRamInternal(tileIndex + 1);
-				
+				ref Mem16 ti = ref ReadVRamWordInternal(tileIndex);
+
 				// Set sprite palette
 				int pal = sprite.PalNum ? Obp1 : Obp0;
 
@@ -533,7 +538,7 @@ namespace SpecBoy
 					byte tileX = (byte)(sprite.XFlip ? 7 - tilePixel : tilePixel);
 
 					// Get colour
-					int colour = (highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (lowByte.IsBitSet(7 - tileX) ? 1 : 0);
+					int colour = (ti.highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (ti.lowByte.IsBitSet(7 - tileX) ? 1 : 0);
 
 					// Move on if pixel is transparent anyway
 					if (colour == 0)
@@ -570,6 +575,14 @@ namespace SpecBoy
 		private uint GetColourFromPalette(int colour, int palette)
 		{
 			return colours.DangerousGetReferenceAt((palette >> (colour << 1)) & 3);
+		}
+
+		[StructLayout(LayoutKind.Explicit)]
+		private readonly struct Mem16
+		{
+			[FieldOffset(0)] public readonly ushort fullWord;
+			[FieldOffset(0)] public readonly byte lowByte;
+			[FieldOffset(1)] public readonly byte highByte;
 		}
 	}
 }
