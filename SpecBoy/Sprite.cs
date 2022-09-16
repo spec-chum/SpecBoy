@@ -1,31 +1,32 @@
-﻿namespace SpecBoy
+﻿namespace SpecBoy;
+
+readonly struct Sprite
 {
-	readonly struct Sprite
+	public Sprite(in PackedBytes32 value)
 	{
-		public Sprite(byte y, byte x, byte tileNum, byte attributes)
-		{
-			Y = (short)(y - 16);
-			X = (short)(x - 8);
-			TileNum = tileNum;
+		Y = (short)(value.firstByte - 16);
+		X = (short)(value.secondByte - 8);
+		TileNum = value.thirdByte;
 
-			Priority = attributes.IsBitSet(7);
-			YFlip = attributes.IsBitSet(6);
-			XFlip = attributes.IsBitSet(5);
-			PalNum = attributes.IsBitSet(4);
-		}
+		var attributes = value.forthByte;
 
-		public short Y { get; }
-
-		public short X { get; }
-
-		public byte TileNum { get; }
-
-		public bool Priority { get; }
-
-		public bool YFlip { get; }
-
-		public bool XFlip { get; }
-
-		public bool PalNum { get; }
+		Priority = attributes.IsBitSet(7);
+		YFlip = attributes.IsBitSet(6);
+		XFlip = attributes.IsBitSet(5);
+		PalNum = attributes.IsBitSet(4);
 	}
+
+	public short Y { get; }
+
+	public short X { get; }
+
+	public byte TileNum { get; }
+
+	public bool Priority { get; }
+
+	public bool YFlip { get; }
+
+	public bool XFlip { get; }
+
+	public bool PalNum { get; }
 }
