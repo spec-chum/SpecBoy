@@ -72,10 +72,7 @@ class Ppu
 
 	public byte Lcdc
 	{
-		get
-		{
-			return lcdc.GetByte();
-		}
+		get => lcdc.GetByte();
 		set
 		{
 			bool oldEnabled = lcdc.LcdEnabled;
@@ -101,14 +98,8 @@ class Ppu
 
 	public byte Stat
 	{
-		get
-		{
-			return stat.GetByte();
-		}
-		set
-		{
-			stat.SetByte(value);
-		}
+		get => stat.GetByte();
+		set => stat.SetByte(value);
 	}
 
 	public byte Ly { get; private set; }

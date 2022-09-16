@@ -226,19 +226,22 @@ class Cartridge
 		}
 	}
 
-	private byte ReadByteMbc3(int address) => address switch
+	private byte ReadByteMbc3(int address)
 	{
-		// ROM bank0
-		<= 0x3fff => rom[address],
+		return address switch
+		{
+			// ROM bank0
+			<= 0x3fff => rom[address],
 
-		// ROM bank n
-		<= 0x7fff => rom[romBank + (address & 0x3fff)],
+			// ROM bank n
+			<= 0x7fff => rom[romBank + (address & 0x3fff)],
 
-		// Cartridge RAM
-		var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram.ReadByte(ramBank + (address & 0x1fff)),
+			// Cartridge RAM
+			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram.ReadByte(ramBank + (address & 0x1fff)),
 
-		_ => 0xff,
-	};
+			_ => 0xff,
+		};
+	}
 
 	private void WriteByteMbc3(int address, byte value)
 	{

@@ -186,8 +186,6 @@ class Memory
 		};
 	}
 
-	public ushort ReadWord(int address) => (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
-
 	public void WriteByte(int address, byte value)
 	{
 		switch (address)
@@ -322,11 +320,5 @@ class Memory
 				Mem[address] = value;
 				break;
 		}
-	}
-
-	public void WriteWord(int address, ushort value)
-	{
-		WriteByte(address, (byte)value);
-		WriteByte(address + 1, (byte)(value >> 8));
 	}
 }

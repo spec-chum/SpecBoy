@@ -22,7 +22,7 @@ struct LcdcReg
 			| SpriteSize.ToBytePower(2)
 			| SpritesEnabled.ToBytePower(1)
 			| BgEnabled.ToBytePower(0));
-}
+	}
 
 	public void SetByte(byte value)
 	{

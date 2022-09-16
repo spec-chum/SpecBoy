@@ -29,10 +29,7 @@ static class Interrupts
 
 	public static byte IF
 	{
-		get
-		{
-			return interruptFlag;
-		}
+		get => interruptFlag;
 		set
 		{
 			vBlankIrqReq = value.IsBitSet(0);
@@ -47,10 +44,7 @@ static class Interrupts
 
 	public static bool VBlankIrqReq
 	{
-		get
-		{
-			return vBlankIrqReq;
-		}
+		get => vBlankIrqReq;
 		set
 		{
 			if (value)
@@ -67,10 +61,7 @@ static class Interrupts
 
 	public static bool StatIrqReq
 	{
-		get
-		{
-			return statIrqReq;
-		}
+		get => statIrqReq;
 		set
 		{
 			if (value)
@@ -87,10 +78,7 @@ static class Interrupts
 
 	public static bool TimerIrqReq
 	{
-		get
-		{
-			return timerIrqReq;
-		}
+		get => timerIrqReq;
 		set
 		{
 			if (value)
@@ -107,10 +95,7 @@ static class Interrupts
 
 	public static bool SerialIrqReq
 	{
-		get
-		{
-			return serialIrqReq;
-		}
+		get => serialIrqReq;
 		set
 		{
 			if (value)
@@ -127,10 +112,7 @@ static class Interrupts
 
 	public static bool JoypadIrqReq
 	{
-		get
-		{
-			return joypadIrqReq;
-		}
+		get => joypadIrqReq;
 		set
 		{
 			if (value)

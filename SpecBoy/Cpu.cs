@@ -63,10 +63,10 @@ class Cpu
 		{
 			af.R16 = value;
 
-			zero = (value & 0x80) != 0;
-			negative = (value & 0x40) != 0;
-			halfCarry = (value & 0x20) != 0;
-			carry = (value & 0x10) != 0;
+			zero = value.IsBitSet(7);
+			negative = value.IsBitSet(6);
+			halfCarry = value.IsBitSet(5);
+			carry = value.IsBitSet(4);
 		}
 	}
 
@@ -645,14 +645,17 @@ class Cpu
 	}
 
 	// Can get either SP or AF depending on bool
-	private ushort GetR16(int r16, bool usesSP = true) => r16 switch
+	private ushort GetR16(int r16, bool usesSP = true)
 	{
-		0 => BC,
-		1 => DE,
-		2 => HL,
-		3 => usesSP ? SP : AF,
-		_ => throw new ArgumentException($"Attempt to get invalid R16 identifier. R16 was {r16}", "r16")
-	};
+		return r16 switch
+		{
+			0 => BC,
+			1 => DE,
+			2 => HL,
+			3 => usesSP ? SP : AF,
+			_ => throw new ArgumentException($"Attempt to get invalid R16 identifier. R16 was {r16}", nameof(r16))
+		};
+	}
 
 	// Can set either SP or AF depending on bool
 	private void SetR16(int r16, ushort value, bool usesSP = true)
@@ -684,22 +687,25 @@ class Cpu
 				break;
 
 			default:
-				throw new ArgumentException($"Attempt to set invalid R16 identifier. R16 was {r16}", "r16");
+				throw new ArgumentException($"Attempt to set invalid R16 identifier. R16 was {r16}", nameof(r16));
 		}
 	}
 
-	private byte GetR8(int r8) => r8 switch
+	private byte GetR8(int r8)
 	{
-		0 => B,
-		1 => C,
-		2 => D,
-		3 => E,
-		4 => H,
-		5 => L,
-		6 => ReadByte(HL),
-		7 => A,
-		_ => throw new ArgumentException($"Attempt to get invalid R8 identifier. R8 was {r8}", "r8")
-	};
+		return r8 switch
+		{
+			0 => B,
+			1 => C,
+			2 => D,
+			3 => E,
+			4 => H,
+			5 => L,
+			6 => ReadByte(HL),
+			7 => A,
+			_ => throw new ArgumentException($"Attempt to get invalid R8 identifier. R8 was {r8}", nameof(r8))
+		};
+	}
 
 	private void SetR8(int r8, byte value)
 	{
@@ -738,7 +744,7 @@ class Cpu
 				break;
 
 			default:
-				throw new ArgumentException($"Attempt to set invalid R8 identifier. R8 was {r8}", "r8");
+				throw new ArgumentException($"Attempt to set invalid R8 identifier. R8 was {r8}", nameof(r8));
 		}
 	}
 
@@ -749,11 +755,20 @@ class Cpu
 		return value;
 	}
 
-	private byte ReadNextByte() => ReadByte(PC++);
+	private byte ReadNextByte()
+	{
+		return ReadByte(PC++);
+	}
 
-	private ushort ReadWord(int address) => (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
+	private ushort ReadWord(int address)
+	{
+		return (ushort)(ReadByte(address) | (ReadByte(address + 1) << 8));
+	}
 
-	private ushort ReadNextWord() => (ushort)(ReadNextByte() | ReadNextByte() << 8);
+	private ushort ReadNextWord()
+	{
+		return (ushort)(ReadNextByte() | ReadNextByte() << 8);
+	}
 
 	private void WriteByte(int address, byte value)
 	{
@@ -892,9 +907,10 @@ class Cpu
 		CycleTick();
 	}
 
-	private bool TestCondition(int opcode) =>
+	private bool TestCondition(int opcode)
+	{
 		// 0 = NZ; 1 = Z; 2 = NC; 3 = C
-		((opcode >> 3) & 0x03) switch
+		return ((opcode >> 3) & 0x03) switch
 		{
 			0 => !zero,
 			1 => zero,
@@ -902,6 +918,7 @@ class Cpu
 			3 => carry,
 			_ => false  // Never reached
 		};
+	}
 
 	private void Ei()
 	{
@@ -1019,7 +1036,10 @@ class Cpu
 		return result;
 	}
 
-	private void Sub(byte value) => A = Cp(value);
+	private void Sub(byte value)
+	{
+		A = Cp(value);
+	}
 
 	private void Sbc(byte value)
 	{
@@ -1101,7 +1121,7 @@ class Cpu
 	{
 		int cc = carry.ToByte();
 
-		carry = (value & 1) != 0;
+		carry = (value & 0x01) != 0;
 		value = (byte)((value >> 1) | (cc << 7));
 
 		zero = value == 0;
@@ -1171,9 +1191,15 @@ class Cpu
 		return value;
 	}
 
-	private byte Res(byte value, int bit) => (byte)(value & (~(1 << bit)));
+	private byte Res(byte value, int bit)
+	{
+		return (byte)(value & (~(1 << bit)));
+	}
 
-	private byte Set(byte value, int bit) => (byte)(value | (1 << bit));
+	private byte Set(byte value, int bit)
+	{
+		return (byte)(value | (1 << bit));
+	}
 
 	private void ProcessInterrupts()
 	{
