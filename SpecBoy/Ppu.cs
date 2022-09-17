@@ -422,7 +422,7 @@ class Ppu
 
 			ref Mem16 tl = ref ReadVRamWordInternal(tileLocation);
 
-			int colour = (tl.highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (tl.lowByte.IsBitSet(7 - tileX) ? 1 : 0);
+			int colour = (tl.Bytes.High.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (tl.Bytes.Low.IsBitSet(7 - tileX) ? 1 : 0);
 			pixelSpan[x] = GetColourFromPalette(colour, Bgp);
 		}
 
@@ -450,7 +450,7 @@ class Ppu
 
 			if (spriteStartY <= Ly && Ly < spriteEndY)
 			{
-				spriteSpan[numSprites] = new Sprite(Unsafe.As<byte, PackedBytes32>(ref oam[i]));
+				spriteSpan[numSprites] = new Sprite(Unsafe.As<byte, Mem32>(ref oam[i]));
 				numSprites++;
 			}
 		}
@@ -522,7 +522,7 @@ class Ppu
 				byte tileX = (byte)(sprite.XFlip ? 7 - tilePixel : tilePixel);
 
 				// Get colour
-				int colour = (ti.highByte.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (ti.lowByte.IsBitSet(7 - tileX) ? 1 : 0);
+				int colour = (ti.Bytes.High.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (ti.Bytes.Low.IsBitSet(7 - tileX) ? 1 : 0);
 
 				// Move on if pixel is transparent anyway
 				if (colour == 0)

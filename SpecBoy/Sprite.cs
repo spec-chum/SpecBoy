@@ -2,13 +2,13 @@
 
 readonly struct Sprite
 {
-	public Sprite(in PackedBytes32 value)
+	public Sprite(in Mem32 value)
 	{
-		Y = (short)(value.firstByte - 16);
-		X = (short)(value.secondByte - 8);
-		TileNum = value.thirdByte;
+		Y = (short)(value.Bytes.First - 16);
+		X = (short)(value.Bytes.Second - 8);
+		TileNum = value.Bytes.Third;
 
-		var attributes = value.forthByte;
+		var attributes = value.Bytes.Forth;
 
 		Priority = attributes.IsBitSet(7);
 		YFlip = attributes.IsBitSet(6);

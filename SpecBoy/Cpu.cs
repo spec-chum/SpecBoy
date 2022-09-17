@@ -74,28 +74,28 @@ class Cpu
 		}
 	}
 
-	public byte A { get => af.R8High; private set => af.R8High = value; }
+	public byte A { get => af.R8.High; private set => af.R8.High = value; }
 	public byte F
 	{
 		// Don't want F being altered directly, so only use getter
 		get
 		{
 			UpdateFlags();
-			return af.R8Low;
+			return af.R8.Low;
 		}
 	}
 
 	public ushort BC { get => bc.R16; private set => bc.R16 = value; }
-	public byte B { get => bc.R8High; private set => bc.R8High = value; }
-	public byte C { get => bc.R8Low; private set => bc.R8Low = value; }
+	public byte B { get => bc.R8.High; private set => bc.R8.High = value; }
+	public byte C { get => bc.R8.Low; private set => bc.R8.Low = value; }
 
 	public ushort DE { get => de.R16; private set => de.R16 = value; }
-	public byte D { get => de.R8High; private set => de.R8High = value; }
-	public byte E { get => de.R8Low; private set => de.R8Low = value; }
+	public byte D { get => de.R8.High; private set => de.R8.High = value; }
+	public byte E { get => de.R8.Low; private set => de.R8.Low = value; }
 
 	public ushort HL { get => hl.R16; private set => hl.R16 = value; }
-	public byte H { get => hl.R8High; private set => hl.R8High = value; }
-	public byte L { get => hl.R8Low; private set => hl.R8Low = value; }
+	public byte H { get => hl.R8.High; private set => hl.R8.High = value; }
+	public byte L { get => hl.R8.Low; private set => hl.R8.Low = value; }
 
 	public ushort SP { get => sp.R16; private set => sp.R16 = value; }
 
@@ -649,7 +649,7 @@ class Cpu
 		flags |= halfCarry.ToBytePower(5);
 		flags |= carry.ToBytePower(4);
 
-		af.R8Low = (byte)flags;
+		af.R8.Low = (byte)flags;
 	}
 
 	// Can get either SP or AF depending on bool
@@ -732,27 +732,27 @@ class Cpu
 		};
 	}
 
-	ref byte GetR8Ref(int r8)
+	private ref byte GetR8Ref(int r8)
 	{
 		switch (r8)
 		{
 			case 0:
-				return ref bc.R8High;
+				return ref bc.R8.High;
 			case 1:
-				return ref bc.R8Low;
+				return ref bc.R8.Low;
 			case 2:
-				return ref de.R8High;
+				return ref de.R8.High;
 			case 3:
-				return ref de.R8Low;
+				return ref de.R8.Low;
 			case 4:
-				return ref hl.R8High;
+				return ref hl.R8.High;
 			case 5:
-				return ref hl.R8Low;
+				return ref hl.R8.Low;
 			case 6:
 				peekHl = ReadByte(HL);
 				return ref peekHl;
 			case 7:
-				return ref af.R8High;
+				return ref af.R8.High;
 			default:
 				throw new ArgumentException($"Attempt to get invalid R8 identifier. R8 was {r8}", nameof(r8));
 		}
@@ -1149,7 +1149,7 @@ class Cpu
 	private void Rl(int r8)
 	{
 		// Shortcut RLA
-		ref byte value = ref r8 == 7 ? ref af.R8High : ref GetR8Ref(r8);
+		ref byte value = ref r8 == 7 ? ref af.R8.High : ref GetR8Ref(r8);
 		int cc = carry.ToByte();
 
 		carry = (value & 0x80) != 0;
@@ -1165,7 +1165,7 @@ class Cpu
 	private void Rr(int r8)
 	{
 		// Shortcut RRA
-		ref byte value = ref r8 == 7 ? ref af.R8High : ref GetR8Ref(r8);
+		ref byte value = ref r8 == 7 ? ref af.R8.High : ref GetR8Ref(r8);
 		int cc = carry.ToByte();
 
 		carry = (value & 0x01) != 0;
@@ -1181,7 +1181,7 @@ class Cpu
 	private void Rlc(int r8)
 	{
 		// Shortcut RLCA
-		ref byte value = ref r8 == 7 ? ref af.R8High : ref GetR8Ref(r8);
+		ref byte value = ref r8 == 7 ? ref af.R8.High : ref GetR8Ref(r8);
 		carry = (value & 0x80) != 0;
 		value = (byte)((value << 1) | (value >> 7));
 
@@ -1195,7 +1195,7 @@ class Cpu
 	private void Rrc(int r8)
 	{
 		// Shortcut RRCA
-		ref byte value = ref r8 == 7 ? ref af.R8High : ref GetR8Ref(r8);
+		ref byte value = ref r8 == 7 ? ref af.R8.High : ref GetR8Ref(r8);
 		carry = (value & 0x01) != 0;
 		value = (byte)((value >> 1) | (value << 7));
 
