@@ -24,9 +24,13 @@ class Cpu
 	private Reg16 bc;
 	private Reg16 de;
 	private Reg16 hl;
+	private Reg16 sp;
 
 	// Interrupt Master Enable flag
 	private bool ime;
+
+	// Used to get a ref to (HL) reads
+	private byte peekHl;
 
 	public Cpu(Memory mem, Ppu ppu, Timers timers)
 	{
@@ -93,9 +97,9 @@ class Cpu
 	public byte H { get => hl.R8High; private set => hl.R8High = value; }
 	public byte L { get => hl.R8Low; private set => hl.R8Low = value; }
 
-	public ushort PC { get; private set; }
+	public ushort SP { get => sp.R16; private set => sp.R16 = value; }
 
-	public ushort SP { get; private set; }
+	public ushort PC { get; private set; }
 
 	public long Cycles { get; private set; }
 
@@ -138,7 +142,7 @@ class Cpu
 			case 0x21:
 			case 0x31:
 				regId = (opcode >> 4) & 0x03;
-				SetR16(regId, ReadNextWord());
+				SetR16Value(regId, ReadNextWord());
 				break;
 
 			// LD (BC), A
@@ -169,7 +173,7 @@ class Cpu
 			case 0x23:
 			case 0x33:
 				regId = (opcode >> 4) & 0x03;
-				SetR16(regId, IncR16(regId));
+				IncR16(regId);
 				break;
 			
 			// INC R8
@@ -182,7 +186,7 @@ class Cpu
 			case 0x2c:
 			case 0x3c:
 				regId = (opcode >> 3) & 0x07;
-				SetR8(regId, IncR8(regId));
+				IncR8(regId);
 				break;
 
 			// DEC R8
@@ -195,7 +199,7 @@ class Cpu
 			case 0x2d:
 			case 0x3d:
 				regId = (opcode >> 3) & 0x07;
-				SetR8(regId, DecR8(regId));
+				DecR8(regId);
 				break;
 
 			// LD R8, u8
@@ -208,12 +212,13 @@ class Cpu
 			case 0x2e:
 			case 0x3e:
 				regId = (opcode >> 3) & 0x07;
-				SetR8(regId, ReadNextByte());
+				SetR8Value(regId, ReadNextByte());
 				break;
 
 			// RLCA - Same as RLC A but Zero always false
 			case 0x07:
-				A = Rlc(A);
+				//A = Rlc(A);
+				Rlc(7);
 				zero = false;
 				break;
 
@@ -237,7 +242,7 @@ class Cpu
 			case 0x2b:
 			case 0x3b:
 				regId = (opcode >> 4) & 0x03;
-				SetR16(regId, DecR16(regId));
+				DecR16(regId);
 				break;
 
 			// STOP
@@ -256,13 +261,15 @@ class Cpu
 
 			// RRCA - same as RRC A except Zero always false
 			case 0xf:
-				A = Rrc(A);
+				//A = Rrc(A);
+				Rrc(7);
 				zero = false;
 				break;
 
 			// RLA  - same as RL A except Zero always false
 			case 0x17:
-				A = Rl(A);
+				//A = Rl(A);
+				Rl(7);
 				zero = false;
 				break;
 
@@ -273,7 +280,8 @@ class Cpu
 
 			// RRA - same as RR A except Zero always false
 			case 0x1f:
-				A = Rr(A);
+				//A = Rr(A);
+				Rr(7);
 				zero = false;
 				break;
 				
@@ -322,7 +330,7 @@ class Cpu
 			// LD R8, R8
 			case var n when n >= 0x40 && n <= 0x7f && n != 0x76:
 				regId = (opcode >> 3) & 0x07;
-				SetR8(regId, GetR8(opcode & 0x07));
+				SetR8Value(regId, GetR8Value(opcode & 0x07));
 				break;
 
 			// HALT
@@ -339,42 +347,42 @@ class Cpu
 
 			// ADD A, r8
 			case >= 0x80 and <= 0x87:
-				Add(GetR8(opcode & 0x07));
+				Add(GetR8Value(opcode & 0x07));
 				break;
 
 			// ADC A, r8
 			case >= 0x88 and <= 0x8f:
-				Adc(GetR8(opcode & 0x07));
+				Adc(GetR8Value(opcode & 0x07));
 				break;
 
 			// SUB A, r8
 			case >= 0x90 and <= 0x97:
-				Sub(GetR8(opcode & 0x07));
+				Sub(GetR8Value(opcode & 0x07));
 				break;
 
 			// SBC A, r8
 			case >= 0x98 and <= 0x9f:
-				Sbc(GetR8(opcode & 0x07));
+				Sbc(GetR8Value(opcode & 0x07));
 				break;
 
 			// AND A, r8
 			case >= 0xa0 and <= 0xa7:
-				And(GetR8(opcode & 0x07));
+				And(GetR8Value(opcode & 0x07));
 				break;
 
 			// XOR A, r8
 			case >= 0xa8 and <= 0xaf:
-				Xor(GetR8(opcode & 0x07));
+				Xor(GetR8Value(opcode & 0x07));
 				break;
 
 			// OR A, r8
 			case >= 0xb0 and <= 0xb7:
-				Or(GetR8(opcode & 0x07));
+				Or(GetR8Value(opcode & 0x07));
 				break;
 
 			// CP r8
 			case >= 0xb8 and <= 0xbf:
-				Cp(GetR8(opcode & 0x07));
+				Cp(GetR8Value(opcode & 0x07));
 				break;
 
 			// POP r16
@@ -410,7 +418,7 @@ class Cpu
 			case 0xe5:
 			case 0xf5:
 				regId = (opcode >> 4) & 0x03;
-				Push(GetR16(regId, false));
+				Push(GetR16Value(regId, false));
 				break;
 
 			// ADD A, u8
@@ -562,57 +570,57 @@ class Cpu
 		{
 			// RLC r8
 			case <= 0x07:
-				SetR8(regId, Rlc(GetR8(regId)));
+				Rlc(regId);
 				break;
 
 			// RRC r8
 			case <= 0x0f:
-				SetR8(regId, Rrc(GetR8(regId)));
+				Rrc(regId);
 				break;
 
 			// RL r8
 			case <= 0x17:
-				SetR8(regId, Rl(GetR8(regId)));
+				Rl(regId);
 				break;
 
 			// RR r8
 			case <= 0x1f:
-				SetR8(regId, Rr(GetR8(regId)));
+				Rr(regId);
 				break;
 
 			// SLA r8
 			case <= 0x27:
-				SetR8(regId, Sla(GetR8(regId)));
+				Sla(regId);
 				break;
 
 			// SRA r8
 			case <= 0x2f:
-				SetR8(regId, Sra(GetR8(regId)));
+				Sra(regId);
 				break;
 
 			// SWAP r8
 			case <= 0x37:
-				SetR8(regId, Swap(GetR8(regId)));
+				Swap(regId);
 				break;
 
 			// SRL r8
 			case <= 0x3f:
-				SetR8(regId, Srl(GetR8(regId)));
+				Srl(regId);
 				break;
 
 			// BIT
 			case <= 0x7f:
-				Bit(GetR8(regId), (opcode >> 3) & 0x07);
+				Bit(GetR8Value(regId), (opcode >> 3) & 0x07);
 				break;
 
 			// RES
 			case <= 0xbf:
-				SetR8(regId, Res(GetR8(regId), (opcode >> 3) & 0x07));
+				Res(regId, (opcode >> 3) & 0x07);
 				break;
 
 			// SET
 			case <= 0xff:
-				SetR8(regId, Set(GetR8(regId), (opcode >> 3) & 0x07));
+				Set(regId, (opcode >> 3) & 0x07);
 				break;
 
 			default:
@@ -645,7 +653,7 @@ class Cpu
 	}
 
 	// Can get either SP or AF depending on bool
-	private ushort GetR16(int r16, bool usesSP = true)
+	private ushort GetR16Value(int r16, bool usesSP = true)
 	{
 		return r16 switch
 		{
@@ -657,8 +665,25 @@ class Cpu
 		};
 	}
 
+	private ref ushort GetR16Ref(int r16)
+	{
+		switch (r16)
+		{
+			case 0:
+				return ref bc.R16;
+			case 1:
+				return ref de.R16;
+			case 2:
+				return ref hl.R16;
+			case 3:
+				return ref sp.R16;
+			default:
+				throw new ArgumentException($"Attempt to get invalid R16 identifier. R16 was {r16}", nameof(r16));
+		}
+	}
+
 	// Can set either SP or AF depending on bool
-	private void SetR16(int r16, ushort value, bool usesSP = true)
+	private void SetR16Value(int r16, ushort value, bool usesSP = true)
 	{
 		switch (r16)
 		{
@@ -691,7 +716,7 @@ class Cpu
 		}
 	}
 
-	private byte GetR8(int r8)
+	private byte GetR8Value(int r8)
 	{
 		return r8 switch
 		{
@@ -707,7 +732,33 @@ class Cpu
 		};
 	}
 
-	private void SetR8(int r8, byte value)
+	ref byte GetR8Ref(int r8)
+	{
+		switch (r8)
+		{
+			case 0:
+				return ref bc.R8High;
+			case 1:
+				return ref bc.R8Low;
+			case 2:
+				return ref de.R8High;
+			case 3:
+				return ref de.R8Low;
+			case 4:
+				return ref hl.R8High;
+			case 5:
+				return ref hl.R8Low;
+			case 6:
+				peekHl = ReadByte(HL);
+				return ref peekHl;
+			case 7:
+				return ref af.R8High;
+			default:
+				throw new ArgumentException($"Attempt to get invalid R8 identifier. R8 was {r8}", nameof(r8));
+		}
+	}
+
+	private void SetR8Value(int r8, byte value)
 	{
 		switch (r8)
 		{
@@ -782,48 +833,42 @@ class Cpu
 		WriteByte(address + 1, (byte)(value >> 8));
 	}
 
-	private byte IncR8(int r8)
+	private void IncR8(int r8)
 	{
-		byte result = GetR8(r8);
+		ref byte result = ref GetR8Ref(r8);
 		result++;
 
 		zero = result == 0;
 		halfCarry = (result & 0x0f) == 0;
 		negative = false;
 
-		return result;
+		TestForPeekHl(r8, result);
 	}
 
-	private byte DecR8(int r8)
+	private void DecR8(int r8)
 	{
-		byte result = GetR8(r8);
+		ref byte result = ref GetR8Ref(r8);
 		result--;
 
 		zero = result == 0;
 		halfCarry = (result & 0x0f) == 0x0f;
 		negative = true;
 
-		return result;
+		TestForPeekHl(r8, result);
 	}
 
-	private ushort IncR16(int r16)
+	private void IncR16(int r16)
 	{
-		ushort result = GetR16(r16);
-		result++;
+		GetR16Ref(r16)++;
 
 		CycleTick();
-
-		return result;
 	}
 
-	private ushort DecR16(int r16)
+	private void DecR16(int r16)
 	{
-		ushort result = GetR16(r16);
-		result--;
+		GetR16Ref(r16)--;
 
 		CycleTick();
-
-		return result;
 	}
 
 	private void Push(ushort address)
@@ -845,7 +890,7 @@ class Cpu
 
 	private void Pop(int r16)
 	{
-		SetR16(r16, ReadWord(SP), false);
+		SetR16Value(r16, ReadWord(SP), false);
 		SP += 2;
 	}
 
@@ -979,7 +1024,7 @@ class Cpu
 
 	private void AddHl(int r16)
 	{
-		ushort value = GetR16(r16);
+		ushort value = GetR16Value(r16);
 		ushort result = (ushort)(HL + value);
 
 		negative = false;
@@ -993,14 +1038,12 @@ class Cpu
 
 	private void LdHlSp(byte i8)
 	{
-		// Cache SP to avoid many calls to getter
-		ushort cachedSP = SP;
-		ushort result = (ushort)(cachedSP + (sbyte)i8);
+		ushort result = (ushort)(SP + (sbyte)i8);
 
 		zero = false;
 		negative = false;
-		halfCarry = (result & 0x0f) < (cachedSP & 0x0f);
-		carry = (result & 0xff) < (cachedSP & 0xff);
+		halfCarry = (result & 0x0f) < (SP & 0x0f);
+		carry = (result & 0xff) < (SP & 0xff);
 
 		HL = result;
 
@@ -1009,14 +1052,12 @@ class Cpu
 
 	private void AddSp(byte i8)
 	{
-		// Cache SP to avoid many calls to getter
-		ushort cachedSP = SP;
-		ushort result = (ushort)(cachedSP + (sbyte)i8);
+		ushort result = (ushort)(SP + (sbyte)i8);
 
 		zero = false;
 		negative = false;
-		halfCarry = (result & 0x0f) < (cachedSP & 0x0f);
-		carry = (result & 0xff) < (cachedSP & 0xff);
+		halfCarry = (result & 0x0f) < (SP & 0x0f);
+		carry = (result & 0xff) < (SP & 0xff);
 
 		SP = result;
 
@@ -1092,113 +1133,140 @@ class Cpu
 		halfCarry = true;
 	}
 
-	private byte Srl(byte value)
+	private void Srl(int r8)
 	{
+		ref byte value = ref GetR8Ref(r8);
 		carry = (value & 0x01) != 0;
 		value >>= 1;
+
+		TestForPeekHl(r8, value);
+
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
-
-		return value;
 	}
 
-	private byte Rl(byte value)
+	private void Rl(int r8)
 	{
+		// Shortcut RLA
+		ref byte value = ref r8 == 7 ? ref af.R8High : ref GetR8Ref(r8);
 		int cc = carry.ToByte();
 
 		carry = (value & 0x80) != 0;
 		value = (byte)((value << 1) | cc);
 
+		TestForPeekHl(r8, value);
+
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
-
-		return value;
 	}
 
-	private byte Rr(byte value)
+	private void Rr(int r8)
 	{
+		// Shortcut RRA
+		ref byte value = ref r8 == 7 ? ref af.R8High : ref GetR8Ref(r8);
 		int cc = carry.ToByte();
 
 		carry = (value & 0x01) != 0;
 		value = (byte)((value >> 1) | (cc << 7));
 
+		TestForPeekHl(r8, value);
+
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
-
-		return value;
 	}
 
-	private byte Rlc(byte value)
+	private void Rlc(int r8)
 	{
+		// Shortcut RLCA
+		ref byte value = ref r8 == 7 ? ref af.R8High : ref GetR8Ref(r8);
 		carry = (value & 0x80) != 0;
 		value = (byte)((value << 1) | (value >> 7));
 
+		TestForPeekHl(r8, value);
+
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
-
-		return value;
 	}
 
-	private byte Rrc(byte value)
+	private void Rrc(int r8)
 	{
+		// Shortcut RRCA
+		ref byte value = ref r8 == 7 ? ref af.R8High : ref GetR8Ref(r8);
 		carry = (value & 0x01) != 0;
 		value = (byte)((value >> 1) | (value << 7));
 
+		TestForPeekHl(r8, value);
+
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
-
-		return value;
 	}
 
-	private byte Sla(byte value)
+	private void Sla(int r8)
 	{
+		ref byte value = ref GetR8Ref(r8);
 		carry = (value & 0x80) != 0;
 		value <<= 1;
 
+		TestForPeekHl(r8, value);
+
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
-
-		return value;
 	}
 
-	private byte Sra(byte value)
+	private void Sra(int r8)
 	{
+		ref byte value = ref GetR8Ref(r8);
 		carry = (value & 0x01) != 0;
 		value = (byte)((value >> 1) | (value & 0x80));
 
+		TestForPeekHl(r8, value);
+
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
-
-		return value;
 	}
 
-	private byte Swap(byte value)
+	private void Swap(int r8)
 	{
+		ref byte value = ref GetR8Ref(r8);
 		value = (byte)((value >> 4) | (value << 4));
+
+		TestForPeekHl(r8, value);
 
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
 		carry = false;
-
-		return value;
 	}
 
-	private byte Res(byte value, int bit)
+	private void Res(int r8, int bit)
 	{
-		return (byte)(value & (~(1 << bit)));
+		ref byte value = ref GetR8Ref(r8);
+		value = (byte)(value & (~(1 << bit)));
+		
+		TestForPeekHl(r8, value);
 	}
 
-	private byte Set(byte value, int bit)
+	private void Set(int r8, int bit)
 	{
-		return (byte)(value | (1 << bit));
+		ref byte value = ref GetR8Ref(r8);
+		value = (byte)(value | (1 << bit));
+
+		TestForPeekHl(r8, value);
+	}
+
+	private void TestForPeekHl(int r8, byte value)
+	{
+		if (r8 == 6)
+		{
+			WriteByte(HL, value);
+		}
 	}
 
 	private void ProcessInterrupts()
