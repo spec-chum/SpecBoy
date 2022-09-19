@@ -29,7 +29,8 @@ class Cpu
 	// Interrupt Master Enable flag
 	private bool ime;
 
-	// Used to get a ref to (HL) reads
+	// Used for (HL) reads
+	private bool usedPeekHl;
 	private byte peekHl;
 
 	public Cpu(Memory mem, Ppu ppu, Timers timers)
@@ -128,6 +129,8 @@ class Cpu
 			ime = true;
 			eiDelay = false;
 		}
+
+		usedPeekHl = false;
 
 		// Opcode execute logic
 		switch (opcode)
@@ -391,7 +394,7 @@ class Cpu
 			case 0xe1:
 			case 0xf1:
 				regId = (opcode >> 4) & 0x03;
-				Pop(regId);
+				SetR16Value(regId, Pop(), false);
 				break;
 
 			// JP
@@ -556,6 +559,12 @@ class Cpu
 
 			default:
 				throw new InvalidOperationException($"Unimplemented instruction {opcode:X2} at PC: {PC:X4}");
+		}
+
+		// Write back (HL) if we used it
+		if (usedPeekHl)
+		{
+			WriteByte(HL, peekHl);
 		}
 
 		return Cycles;
@@ -749,6 +758,7 @@ class Cpu
 			case 5:
 				return ref hl.R8.Low;
 			case 6:
+				usedPeekHl = true;
 				peekHl = ReadByte(HL);
 				return ref peekHl;
 			case 7:
@@ -841,8 +851,6 @@ class Cpu
 		zero = result == 0;
 		halfCarry = (result & 0x0f) == 0;
 		negative = false;
-
-		TestForPeekHl(r8, result);
 	}
 
 	private void DecR8(int r8)
@@ -853,8 +861,6 @@ class Cpu
 		zero = result == 0;
 		halfCarry = (result & 0x0f) == 0x0f;
 		negative = true;
-
-		TestForPeekHl(r8, result);
 	}
 
 	private void IncR16(int r16)
@@ -886,12 +892,6 @@ class Cpu
 		var address = ReadWord(SP);
 		SP += 2;
 		return address;
-	}
-
-	private void Pop(int r16)
-	{
-		SetR16Value(r16, ReadWord(SP), false);
-		SP += 2;
 	}
 
 	private void Call(int opcode)
@@ -1139,8 +1139,6 @@ class Cpu
 		carry = (value & 0x01) != 0;
 		value >>= 1;
 
-		TestForPeekHl(r8, value);
-
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
@@ -1154,8 +1152,6 @@ class Cpu
 
 		carry = (value & 0x80) != 0;
 		value = (byte)((value << 1) | cc);
-
-		TestForPeekHl(r8, value);
 
 		zero = value == 0;
 		negative = false;
@@ -1171,8 +1167,6 @@ class Cpu
 		carry = (value & 0x01) != 0;
 		value = (byte)((value >> 1) | (cc << 7));
 
-		TestForPeekHl(r8, value);
-
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
@@ -1184,8 +1178,6 @@ class Cpu
 		ref byte value = ref r8 == 7 ? ref af.R8.High : ref GetR8Ref(r8);
 		carry = (value & 0x80) != 0;
 		value = (byte)((value << 1) | (value >> 7));
-
-		TestForPeekHl(r8, value);
 
 		zero = value == 0;
 		negative = false;
@@ -1199,8 +1191,6 @@ class Cpu
 		carry = (value & 0x01) != 0;
 		value = (byte)((value >> 1) | (value << 7));
 
-		TestForPeekHl(r8, value);
-
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
@@ -1211,8 +1201,6 @@ class Cpu
 		ref byte value = ref GetR8Ref(r8);
 		carry = (value & 0x80) != 0;
 		value <<= 1;
-
-		TestForPeekHl(r8, value);
 
 		zero = value == 0;
 		negative = false;
@@ -1225,8 +1213,6 @@ class Cpu
 		carry = (value & 0x01) != 0;
 		value = (byte)((value >> 1) | (value & 0x80));
 
-		TestForPeekHl(r8, value);
-
 		zero = value == 0;
 		negative = false;
 		halfCarry = false;
@@ -1236,8 +1222,6 @@ class Cpu
 	{
 		ref byte value = ref GetR8Ref(r8);
 		value = (byte)((value >> 4) | (value << 4));
-
-		TestForPeekHl(r8, value);
 
 		zero = value == 0;
 		negative = false;
@@ -1249,24 +1233,12 @@ class Cpu
 	{
 		ref byte value = ref GetR8Ref(r8);
 		value = (byte)(value & (~(1 << bit)));
-		
-		TestForPeekHl(r8, value);
 	}
 
 	private void Set(int r8, int bit)
 	{
 		ref byte value = ref GetR8Ref(r8);
 		value = (byte)(value | (1 << bit));
-
-		TestForPeekHl(r8, value);
-	}
-
-	private void TestForPeekHl(int r8, byte value)
-	{
-		if (r8 == 6)
-		{
-			WriteByte(HL, value);
-		}
 	}
 
 	private void ProcessInterrupts()
