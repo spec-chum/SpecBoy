@@ -311,23 +311,17 @@ class Cpu
 
 			// CPL
 			case 0x2f:
-				A = (byte)~A;
-				negative = true;
-				halfCarry = true;
+				Cpl();
 				break;
 
 			// SCF
 			case 0x37:
-				negative = false;
-				halfCarry = false;
-				carry = true;
+				Scf();
 				break;
 
 			// CCF
 			case 0x3f:
-				negative = false;
-				halfCarry = false;
-				carry = !carry;
+				Ccf();
 				break;
 
 			// LD R8, R8
@@ -1124,6 +1118,27 @@ class Cpu
 		negative = false;
 		halfCarry = false;
 		carry = false;
+	}
+	private void Ccf()
+	{
+		negative = false;
+		halfCarry = false;
+		carry = !carry;
+	}
+
+	private void Scf()
+	{
+		negative = false;
+		halfCarry = false;
+		carry = true;
+	}
+
+	private void Cpl()
+	{
+		ref byte regA = ref af.R8.High;
+		regA = (byte)~regA;
+		negative = true;
+		halfCarry = true;
 	}
 
 	private void Bit(byte value, int bit)
