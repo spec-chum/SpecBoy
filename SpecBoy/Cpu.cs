@@ -24,7 +24,8 @@ class Cpu
 	private Reg16 bc;
 	private Reg16 de;
 	private Reg16 hl;
-	private Reg16 sp;
+	private ushort sp;
+	private ushort pc;
 
 	// Interrupt Master Enable flag
 	private bool ime;
@@ -75,32 +76,32 @@ class Cpu
 		}
 	}
 
-	public byte A { get => af.R8.High; private set => af.R8.High = value; }
-	public byte F
+	public ref byte A { get => ref af.R8.High; }
+	public ref byte F
 	{
 		// Don't want F being altered directly, so only use getter
 		get
 		{
 			UpdateFlags();
-			return af.R8.Low;
+			return ref af.R8.Low;
 		}
 	}
 
-	public ushort BC { get => bc.R16; private set => bc.R16 = value; }
-	public byte B { get => bc.R8.High; private set => bc.R8.High = value; }
-	public byte C { get => bc.R8.Low; private set => bc.R8.Low = value; }
+	public ref ushort BC { get => ref bc.R16; }
+	public ref byte B { get => ref bc.R8.High; }
+	public ref byte C { get => ref bc.R8.Low; }
 
-	public ushort DE { get => de.R16; private set => de.R16 = value; }
-	public byte D { get => de.R8.High; private set => de.R8.High = value; }
-	public byte E { get => de.R8.Low; private set => de.R8.Low = value; }
+	public ref ushort DE { get => ref de.R16; }
+	public ref byte D { get => ref de.R8.High; }
+	public ref byte E { get => ref de.R8.Low; }
 
-	public ushort HL { get => hl.R16; private set => hl.R16 = value; }
-	public byte H { get => hl.R8.High; private set => hl.R8.High = value; }
-	public byte L { get => hl.R8.Low; private set => hl.R8.Low = value; }
+	public ref ushort HL { get => ref hl.R16; }
+	public ref byte H { get => ref hl.R8.High; }
+	public ref byte L { get => ref hl.R8.Low; }
 
-	public ushort SP { get => sp.R16; private set => sp.R16 = value; }
+	public ref ushort SP { get => ref sp; }
 
-	public ushort PC { get; private set; }
+	public ref ushort PC { get => ref pc; }
 
 	public long Cycles { get; private set; }
 
@@ -647,12 +648,10 @@ class Cpu
 
 	private void UpdateFlags()
 	{
-		int flags = zero.ToBytePower(7);
-		flags |= negative.ToBytePower(6); 
-		flags |= halfCarry.ToBytePower(5);
-		flags |= carry.ToBytePower(4);
-
-		af.R8.Low = (byte)flags;
+		af.R8.Low = (byte)(zero.ToBytePower(7)
+					 | negative.ToBytePower(6)
+					 | halfCarry.ToBytePower(5)
+					 | carry.ToBytePower(4));
 	}
 
 	// Can get either SP or AF depending on bool
@@ -673,13 +672,13 @@ class Cpu
 		switch (r16)
 		{
 			case 0:
-				return ref bc.R16;
+				return ref BC;
 			case 1:
-				return ref de.R16;
+				return ref DE;
 			case 2:
-				return ref hl.R16;
+				return ref HL;
 			case 3:
-				return ref sp.R16;
+				return ref SP;
 			default:
 				throw new ArgumentException($"Attempt to get invalid R16 identifier. R16 was {r16}", nameof(r16));
 		}
@@ -740,23 +739,23 @@ class Cpu
 		switch (r8)
 		{
 			case 0:
-				return ref bc.R8.High;
+				return ref B;
 			case 1:
-				return ref bc.R8.Low;
+				return ref C;
 			case 2:
-				return ref de.R8.High;
+				return ref D;
 			case 3:
-				return ref de.R8.Low;
+				return ref E;
 			case 4:
-				return ref hl.R8.High;
+				return ref H;
 			case 5:
-				return ref hl.R8.Low;
+				return ref L;
 			case 6:
 				usedPeekHl = true;
 				peekHl = ReadByte(HL);
 				return ref peekHl;
 			case 7:
-				return ref af.R8.High;
+				return ref A;
 			default:
 				throw new ArgumentException($"Attempt to get invalid R8 identifier. R8 was {r8}", nameof(r8));
 		}
@@ -1135,8 +1134,7 @@ class Cpu
 
 	private void Cpl()
 	{
-		ref byte regA = ref af.R8.High;
-		regA = (byte)~regA;
+		A = (byte)~A;
 		negative = true;
 		halfCarry = true;
 	}
@@ -1162,7 +1160,7 @@ class Cpu
 	private void Rl(int r8)
 	{
 		// Shortcut RLA
-		ref byte value = ref r8 == 7 ? ref af.R8.High : ref GetR8Ref(r8);
+		ref byte value = ref r8 == 7 ? ref A : ref GetR8Ref(r8);
 		int cc = carry.ToByte();
 
 		carry = (value & 0x80) != 0;
@@ -1176,7 +1174,7 @@ class Cpu
 	private void Rr(int r8)
 	{
 		// Shortcut RRA
-		ref byte value = ref r8 == 7 ? ref af.R8.High : ref GetR8Ref(r8);
+		ref byte value = ref r8 == 7 ? ref A : ref GetR8Ref(r8);
 		int cc = carry.ToByte();
 
 		carry = (value & 0x01) != 0;
@@ -1190,7 +1188,7 @@ class Cpu
 	private void Rlc(int r8)
 	{
 		// Shortcut RLCA
-		ref byte value = ref r8 == 7 ? ref af.R8.High : ref GetR8Ref(r8);
+		ref byte value = ref r8 == 7 ? ref A : ref GetR8Ref(r8);
 		carry = (value & 0x80) != 0;
 		value = (byte)((value << 1) | (value >> 7));
 
@@ -1202,7 +1200,7 @@ class Cpu
 	private void Rrc(int r8)
 	{
 		// Shortcut RRCA
-		ref byte value = ref r8 == 7 ? ref af.R8.High : ref GetR8Ref(r8);
+		ref byte value = ref r8 == 7 ? ref A : ref GetR8Ref(r8);
 		carry = (value & 0x01) != 0;
 		value = (byte)((value >> 1) | (value << 7));
 
