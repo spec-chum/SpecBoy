@@ -1,4 +1,6 @@
-﻿namespace SpecBoy;
+﻿using CommunityToolkit.HighPerformance.Helpers;
+
+namespace SpecBoy;
 
 static class Interrupts
 {
@@ -14,116 +16,51 @@ static class Interrupts
 	public const ushort SerialIrqVector = 0x58;
 	public const int SerialIeBit = 3;
 
-	public const int JoypadIrqVector = 0x60;
+	public const ushort JoypadIrqVector = 0x60;
 	public const int JoypadIeBit = 4;
 
-	private static bool vBlankIrqReq;
-	private static bool statIrqReq;
-	private static bool serialIrqReq;
-	private static bool timerIrqReq;
-	private static bool joypadIrqReq;
+	private static uint interruptFlag;
+	private static uint interruptEnable;
 
-	private static byte interruptFlag;
-
-	public static byte IE { get; set; }
+	public static byte IE
+	{
+		get => (byte)interruptEnable;
+		set => interruptEnable = value;
+	}
 
 	public static byte IF
 	{
-		get => interruptFlag;
-		set
-		{
-			vBlankIrqReq = value.IsBitSet(0);
-			statIrqReq = value.IsBitSet(1);
-			timerIrqReq = value.IsBitSet(2);
-			serialIrqReq = value.IsBitSet(3);
-			joypadIrqReq = value.IsBitSet(4);
-
-			interruptFlag = value;
-		}
+		get => (byte)interruptFlag;
+		set => interruptFlag = value;
 	}
 
 	public static bool VBlankIrqReq
 	{
-		get => vBlankIrqReq;
-		set
-		{
-			if (value)
-			{
-				interruptFlag |= 1;
-			}
-			else
-			{
-				interruptFlag &= 0xff ^ 1;
-			}
-			vBlankIrqReq = value;
-		}
+		get => interruptFlag.IsBitSet(VBlankIeBit);
+		set => BitHelper.SetFlag(ref interruptFlag, VBlankIeBit, value);
 	}
 
 	public static bool StatIrqReq
 	{
-		get => statIrqReq;
-		set
-		{
-			if (value)
-			{
-				interruptFlag |= 1 << 1;
-			}
-			else
-			{
-				interruptFlag &= 0xff ^ (1 << 1);
-			}
-			statIrqReq = value;
-		}
+		get => interruptFlag.IsBitSet(StatIeBit);
+		set => BitHelper.SetFlag(ref interruptFlag, StatIeBit, value);
 	}
 
 	public static bool TimerIrqReq
 	{
-		get => timerIrqReq;
-		set
-		{
-			if (value)
-			{
-				interruptFlag |= 1 << 2;
-			}
-			else
-			{
-				interruptFlag &= 0xff ^ (1 << 2);
-			}
-			timerIrqReq = value;
-		}
+		get => interruptFlag.IsBitSet(TimerIeBit);
+		set => BitHelper.SetFlag(ref interruptFlag, TimerIeBit, value);
 	}
 
 	public static bool SerialIrqReq
 	{
-		get => serialIrqReq;
-		set
-		{
-			if (value)
-			{
-				interruptFlag |= 1 << 3;
-			}
-			else
-			{
-				interruptFlag &= 0xff ^ (1 << 3);
-			}
-			serialIrqReq = value;
-		}
+		get => interruptFlag.IsBitSet(SerialIeBit);
+		set => BitHelper.SetFlag(ref interruptFlag, SerialIeBit, value);
 	}
 
 	public static bool JoypadIrqReq
 	{
-		get => joypadIrqReq;
-		set
-		{
-			if (value)
-			{
-				interruptFlag |= 1 << 4;
-			}
-			else
-			{
-				interruptFlag &= 0xff ^ (1 << 4);
-			}
-			joypadIrqReq = value;
-		}
+		get => interruptFlag.IsBitSet(JoypadIeBit);
+		set => BitHelper.SetFlag(ref interruptFlag, JoypadIeBit, value);
 	}
 }

@@ -1,5 +1,5 @@
-﻿using System;
-using CommunityToolkit.HighPerformance;
+﻿using CommunityToolkit.HighPerformance;
+using System;
 
 namespace SpecBoy;
 
@@ -1149,7 +1149,7 @@ class Cpu
 	private void Srl(int r8)
 	{
 		ref byte value = ref GetR8Ref(r8);
-		carry = (value & 0x01) != 0;
+		carry = value.IsBitSet(0);
 		value >>= 1;
 
 		zero = value == 0;
@@ -1163,7 +1163,7 @@ class Cpu
 		ref byte value = ref r8 == 7 ? ref A : ref GetR8Ref(r8);
 		int cc = carry.ToByte();
 
-		carry = (value & 0x80) != 0;
+		carry = value.IsBitSet(7);
 		value = (byte)((value << 1) | cc);
 
 		zero = value == 0;
@@ -1177,7 +1177,7 @@ class Cpu
 		ref byte value = ref r8 == 7 ? ref A : ref GetR8Ref(r8);
 		int cc = carry.ToByte();
 
-		carry = (value & 0x01) != 0;
+		carry = value.IsBitSet(0);
 		value = (byte)((value >> 1) | (cc << 7));
 
 		zero = value == 0;
@@ -1189,7 +1189,7 @@ class Cpu
 	{
 		// Shortcut RLCA
 		ref byte value = ref r8 == 7 ? ref A : ref GetR8Ref(r8);
-		carry = (value & 0x80) != 0;
+		carry = value.IsBitSet(7);
 		value = (byte)((value << 1) | (value >> 7));
 
 		zero = value == 0;
@@ -1201,8 +1201,8 @@ class Cpu
 	{
 		// Shortcut RRCA
 		ref byte value = ref r8 == 7 ? ref A : ref GetR8Ref(r8);
-		carry = (value & 0x01) != 0;
-		value = (byte)((value >> 1) | (value << 7));
+		carry = value.IsBitSet(0);
+		value = byte.RotateRight(value, 1);
 
 		zero = value == 0;
 		negative = false;
@@ -1212,7 +1212,7 @@ class Cpu
 	private void Sla(int r8)
 	{
 		ref byte value = ref GetR8Ref(r8);
-		carry = (value & 0x80) != 0;
+		carry = value.IsBitSet(7);
 		value <<= 1;
 
 		zero = value == 0;
@@ -1223,7 +1223,7 @@ class Cpu
 	private void Sra(int r8)
 	{
 		ref byte value = ref GetR8Ref(r8);
-		carry = (value & 0x01) != 0;
+		carry = value.IsBitSet(0);
 		value = (byte)((value >> 1) | (value & 0x80));
 
 		zero = value == 0;
@@ -1234,7 +1234,7 @@ class Cpu
 	private void Swap(int r8)
 	{
 		ref byte value = ref GetR8Ref(r8);
-		value = (byte)((value >> 4) | (value << 4));
+		value = byte.RotateLeft(value, 4);
 
 		zero = value == 0;
 		negative = false;
