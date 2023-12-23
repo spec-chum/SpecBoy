@@ -1,4 +1,8 @@
-﻿using static SDL2.SDL;
+﻿using System.Collections.Frozen;
+using System.Collections.Generic;
+using System;
+
+using static SDL2.SDL;
 using static SDL2.SDL.SDL_Scancode;
 
 namespace SpecBoy;
@@ -18,16 +22,23 @@ class Joypad
 	private int start;
 	private int select;
 
+	private readonly FrozenDictionary<SDL_Scancode, Action> keymap;
+
 	public Joypad()
 	{
-		down = 1;
-		up = 1;
-		left = 1;
-		right = 1;
-		buttonA = 1;
-		buttonB = 1;
-		select = 1;
-		start = 1;
+		keymap = new Dictionary<SDL_Scancode, Action>
+		{
+			{ SDL_SCANCODE_UP, () => { up = 0; } },
+			{ SDL_SCANCODE_DOWN, () => { down = 0; } },
+			{ SDL_SCANCODE_LEFT, () => { left = 0; } },
+			{ SDL_SCANCODE_RIGHT, () => { right = 0; } },
+			{ SDL_SCANCODE_S, () => { buttonA = 0; } },
+			{ SDL_SCANCODE_A, () => { buttonB = 0; } },
+			{ SDL_SCANCODE_F, () => { start = 0; } },
+			{ SDL_SCANCODE_D, () => { select = 0; } },
+		}.ToFrozenDictionary();
+
+		ResetButtons();
 	}
 
 	public byte JoyP
@@ -63,69 +74,38 @@ class Joypad
 		}
 	}
 
-	unsafe public void GetInput()
+	public void GetInput()
 	{
-		down = 1;
+		ResetButtons();
+
+		bool fireInterrupt = false;
+
+		unsafe
+		{
+			byte* keyState = (byte*)SDL_GetKeyboardState(out _).ToPointer();
+
+			foreach (var keys in keymap)
+			{
+				if (keyState[(int)keys.Key] != 0)
+				{
+					keys.Value.Invoke();
+					fireInterrupt = true;
+				}
+			}
+		}
+
+		Interrupts.JoypadIrqReq = fireInterrupt;
+	}
+
+	private void ResetButtons()
+	{
 		up = 1;
+		down = 1;
 		left = 1;
 		right = 1;
 		buttonA = 1;
 		buttonB = 1;
-		select = 1;
 		start = 1;
-
-		byte* keyState = (byte*)SDL_GetKeyboardState(out _).ToPointer();
-
-		bool fireInterrupt = false;
-
-        if (keyState[(int)SDL_SCANCODE_DOWN] != 0)
-        {
-            fireInterrupt = true;
-            down = 0;
-        }
-
-        if (keyState[(int)SDL_SCANCODE_UP] != 0)
-        {
-            fireInterrupt = true;
-            up = 0;
-        }
-
-        if (keyState[(int)SDL_SCANCODE_LEFT] != 0)
-        {
-            fireInterrupt = true;
-            left = 0;
-        }
-
-        if (keyState[(int)SDL_SCANCODE_RIGHT] != 0)
-        {
-            fireInterrupt = true;
-            right = 0;
-        }
-
-        if (keyState[(int)SDL_SCANCODE_A] != 0)
-        {
-            fireInterrupt = true;
-            buttonB = 0;
-        }
-
-        if (keyState[(int)SDL_SCANCODE_S] != 0)
-        {
-            fireInterrupt = true;
-            buttonA = 0;
-        }
-
-        if (keyState[(int)SDL_SCANCODE_F] != 0)
-		{
-			fireInterrupt = true;
-			start = 0;
-		}
-
-		if (keyState[(int)SDL_SCANCODE_D] != 0)
-		{
-			fireInterrupt = true;
-			select = 0;
-		}
-
-		Interrupts.JoypadIrqReq = fireInterrupt;
+		select = 1;
 	}
 }

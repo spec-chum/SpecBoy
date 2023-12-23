@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.HighPerformance;
 using System;
 using System.Runtime.CompilerServices;
+
 using static SDL2.SDL;
 
 namespace SpecBoy;

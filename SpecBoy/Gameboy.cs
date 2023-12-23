@@ -1,13 +1,15 @@
 ﻿using System;
-
+using System.Diagnostics;
+using System.Threading;
 using static SDL2.SDL;
-using static SDL2.SDL.SDL_RendererFlags;
 
 namespace SpecBoy;
 
 class Gameboy
 {
-	private const int Scale = 4;
+	private const bool Fullspeed = false;
+	private const double FrameInterval = 1000.0 / 59.7;
+	private const int Scale = 6;
 
 	private readonly Cpu cpu;
 	private readonly Memory mem;
@@ -24,8 +26,8 @@ class Gameboy
 	{
 		SDL_Init(SDL_INIT_VIDEO);
 
-		window = SDL_CreateWindow("SpecBoy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160 * Scale, 144 * Scale, SDL_WindowFlags.SDL_WINDOW_SHOWN);
-		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+		window = SDL_CreateWindow("SpecBoy", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 160 * Scale, 144 * Scale, SDL_WindowFlags.SDL_WINDOW_SHOWN);
+		renderer = SDL_CreateRenderer(window, -1, SDL_RendererFlags.SDL_RENDERER_ACCELERATED);
 
 		timers = new Timers();
 		joypad = new Joypad();
@@ -37,8 +39,7 @@ class Gameboy
 
 	public void Run()
 	{
-		long prevCycles = 0;
-		bool logging = false;
+		Stopwatch stopwatch = Stopwatch.StartNew();
 
 		// Timer starts 4t before CPU
 		timers.Tick();
@@ -47,11 +48,12 @@ class Gameboy
 		timers.Tick();
 		ppu.Tick();
 
+		long prevCycles = 0;
 		bool quit = false;
 
 		while (!quit)
 		{
-			long cyclesThisFrame = 0;
+			var frameStart = stopwatch.Elapsed.TotalMilliseconds;
 
 			while (SDL_PollEvent(out SDL_Event e) != 0)
 			{
@@ -72,27 +74,20 @@ class Gameboy
 
 			joypad.GetInput();
 
-			long prevPC = 0;
-
+			long cyclesThisFrame = 0;
 			while (cyclesThisFrame < 70224 && !ppu.HitVSync)
 			{
-				if (logging)
-				{
-					if (prevPC != cpu.PC)
-					{
-						Console.WriteLine($"A: {cpu.A:X2} F: {cpu.F:X2}" +
-							$" B: {cpu.B:X2} C: {cpu.C:X2} D: {cpu.D:X2} E: {cpu.E:X2} H: {cpu.H:X2} L: {cpu.L:X2}" +
-							$" SP: {cpu.SP:X4} PC: 00:{cpu.PC:X4}" +
-							$" ({mem.ReadByte(cpu.PC, true):X2} {mem.ReadByte(cpu.PC + 1, true):X2}" +
-							$" {mem.ReadByte(cpu.PC + 2, true):X2} {mem.ReadByte(cpu.PC + 3, true):X2})");
-					}
-
-					prevPC = cpu.PC;
-				}
-
 				long currentCycles = cpu.Execute();
 				cyclesThisFrame += currentCycles - prevCycles;
 				prevCycles = currentCycles;
+			}
+
+			var elapsedTime = stopwatch.Elapsed.TotalMilliseconds - frameStart;
+			
+			if (!Fullspeed && elapsedTime < FrameInterval)
+			{
+				var remainingTime = FrameInterval - elapsedTime;
+				Thread.Sleep((int)(remainingTime));
 			}
 
 			ppu.HitVSync = false;
