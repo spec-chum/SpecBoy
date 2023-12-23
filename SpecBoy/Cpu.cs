@@ -326,7 +326,7 @@ class Cpu
 				break;
 
 			// LD R8, R8
-			case var n when n >= 0x40 && n <= 0x7f && n != 0x76:
+			case var n when n is >= 0x40 and <= 0x7f and not 0x76:
 				regId = (opcode >> 3) & 0x07;
 				SetR8Value(regId, GetR8Value(opcode & 0x07));
 				break;

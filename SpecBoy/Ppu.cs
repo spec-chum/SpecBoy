@@ -140,7 +140,7 @@ class Ppu
 		}
 
 		// Inaccessible during modes 2 and 3
-		if (stat.CurrentMode == Mode.OAM || stat.CurrentMode == Mode.LCDTransfer)
+		if (stat.CurrentMode is Mode.OAM or Mode.LCDTransfer)
 		{
 			return false;
 		}

@@ -220,7 +220,7 @@ class Memory
 
 			// OAM
 			case <= 0xfe9f:
-				if (dmaCycles == 0 && dmaCycles <= 160)
+				if (dmaCycles is 0 and <= 160)
 				{
 					ppu.WriteOam(address & 0xff, value);
 				}

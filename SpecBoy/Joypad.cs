@@ -1,6 +1,6 @@
-﻿using System.Collections.Frozen;
+﻿using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
-using System;
 
 using static SDL2.SDL;
 using static SDL2.SDL.SDL_Scancode;

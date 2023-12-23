@@ -9,7 +9,7 @@ class Cartridge
 	public Func<int, byte> ReadByte;
 	public Action<int, byte> WriteByte;
 
-	private readonly int[] ramSizes = { 0, 2, 8, 32, 128, 64 };
+	private readonly int[] ramSizes = [0, 2, 8, 32, 128, 64];
 	private readonly int bankLimitMask;
 	private readonly byte[] rom;
 
@@ -134,7 +134,7 @@ class Cartridge
 
 			if (hasBattery)
 			{
-				mmf = MemoryMappedFile.CreateFromFile(romName.Remove(romName.LastIndexOf(".")) + ".sav", FileMode.OpenOrCreate, null, ramSize * 1024);
+				mmf = MemoryMappedFile.CreateFromFile(romName.Remove(romName.LastIndexOf('.')) + ".sav", FileMode.OpenOrCreate, null, ramSize * 1024);
 			}
 			else
 			{
