@@ -1,4 +1,5 @@
-﻿using SFML.Window;
+﻿using static SDL2.SDL;
+using static SDL2.SDL.SDL_Scancode;
 
 namespace SpecBoy;
 
@@ -17,17 +18,10 @@ class Joypad
 	private int start;
 	private int select;
 
-	public Joypad(Window window)
+	public Joypad()
 	{
-		window.KeyPressed += OnKeyPressed;
-		window.KeyReleased += OnKeyReleased;
-
-		window.JoystickMoved += OnJoyMoved;
-		window.JoystickButtonPressed += OnJoyButtonPressed;
-		window.JoystickButtonReleased += OnJoyButtonReleased;
-
-		up = 1;
 		down = 1;
+		up = 1;
 		left = 1;
 		right = 1;
 		buttonA = 1;
@@ -69,148 +63,69 @@ class Joypad
 		}
 	}
 
-	private void OnKeyPressed(object sender, KeyEventArgs e)
+	unsafe public void GetInput()
 	{
-		bool fireInterrupt = true;
+		down = 1;
+		up = 1;
+		left = 1;
+		right = 1;
+		buttonA = 1;
+		buttonB = 1;
+		select = 1;
+		start = 1;
 
-		switch (e.Code)
+		byte* keyState = (byte*)SDL_GetKeyboardState(out _).ToPointer();
+
+		bool fireInterrupt = false;
+
+        if (keyState[(int)SDL_SCANCODE_DOWN] != 0)
+        {
+            fireInterrupt = true;
+            down = 0;
+        }
+
+        if (keyState[(int)SDL_SCANCODE_UP] != 0)
+        {
+            fireInterrupt = true;
+            up = 0;
+        }
+
+        if (keyState[(int)SDL_SCANCODE_LEFT] != 0)
+        {
+            fireInterrupt = true;
+            left = 0;
+        }
+
+        if (keyState[(int)SDL_SCANCODE_RIGHT] != 0)
+        {
+            fireInterrupt = true;
+            right = 0;
+        }
+
+        if (keyState[(int)SDL_SCANCODE_A] != 0)
+        {
+            fireInterrupt = true;
+            buttonB = 0;
+        }
+
+        if (keyState[(int)SDL_SCANCODE_S] != 0)
+        {
+            fireInterrupt = true;
+            buttonA = 0;
+        }
+
+        if (keyState[(int)SDL_SCANCODE_F] != 0)
 		{
-			case Keyboard.Key.Down:
-				down = 0;
-				break;
-			case Keyboard.Key.Up:
-				up = 0;
-				break;
-			case Keyboard.Key.Left:
-				left = 0;
-				break;
-			case Keyboard.Key.Right:
-				right = 0;
-				break;
-
-			case Keyboard.Key.F:
-				start = 0;
-				break;
-			case Keyboard.Key.D:
-				select = 0;
-				break;
-			case Keyboard.Key.A:
-				buttonB = 0;
-				break;
-			case Keyboard.Key.S:
-				buttonA = 0;
-				break;
-
-			case Keyboard.Key.Escape:
-				((Window)sender).Close();
-				break;
-
-			default:
-				fireInterrupt = false;
-				break;
-		}
-				
-		Interrupts.JoypadIrqReq = fireInterrupt;
-	}
-
-	private void OnKeyReleased(object sender, KeyEventArgs e)
-	{
-		switch (e.Code)
-		{
-			case Keyboard.Key.Up:
-				up = 1;
-				break;
-			case Keyboard.Key.Down:
-				down = 1;
-				break;
-			case Keyboard.Key.Left:
-				left = 1;
-				break;
-			case Keyboard.Key.Right:
-				right = 1;
-				break;
-
-			case Keyboard.Key.D:
-				select = 1;
-				break;
-			case Keyboard.Key.F:
-				start = 1;
-				break;
-			case Keyboard.Key.A:
-				buttonB = 1;
-				break;
-			case Keyboard.Key.S:
-				buttonA = 1;
-				break;
-
-			default:
-				break;
-		}
-	}
-
-	private void OnJoyMoved(object sender, JoystickMoveEventArgs e)
-	{
-		if (e.Axis == Joystick.Axis.X)
-		{
-			left = e.Position == -100 ? 0 : 1;
-			right = e.Position == 100 ? 0 : 1;
-		}
-		else if (e.Axis == Joystick.Axis.Y)
-		{
-			up = e.Position == -100 ? 0 : 1;
-			down = e.Position == 100 ? 0 : 1;
+			fireInterrupt = true;
+			start = 0;
 		}
 
-		if (left + right + up + down != 4)
+		if (keyState[(int)SDL_SCANCODE_D] != 0)
 		{
-			Interrupts.JoypadIrqReq = true;
-		}
-	}
-
-	private void OnJoyButtonPressed(object sender, JoystickButtonEventArgs e)
-	{
-		bool fireInterrupt = true;
-
-		switch (e.Button)
-		{
-			case 0:
-				buttonA = 0;
-				break;
-			case 1:
-				buttonB = 0;
-				break;
-			case 6:
-				select = 0;
-				break;
-			case 7:
-				start = 0;
-				break;
-			default:
-				fireInterrupt = false;
-				break;
+			fireInterrupt = true;
+			select = 0;
 		}
 
 		Interrupts.JoypadIrqReq = fireInterrupt;
-	}
-
-	private void OnJoyButtonReleased(object sender, JoystickButtonEventArgs e)
-	{
-		switch (e.Button)
-		{
-			case 0:
-				buttonA = 1;
-				break;
-			case 1:
-				buttonB = 1;
-				break;
-			case 6:
-				select = 1;
-				break;
-			case 7:
-				start = 1;
-				break;
-			default:
-				break;
-		}
 	}
 }

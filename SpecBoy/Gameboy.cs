@@ -7,7 +7,7 @@ namespace SpecBoy;
 
 class Gameboy
 {
-	private const int scale = 4;
+	private const int Scale = 4;
 
 	private readonly Cpu cpu;
 	private readonly Memory mem;
@@ -17,19 +17,19 @@ class Gameboy
 	private readonly Cartridge cartridge;
 
 	// SFML
-	private nint window;
-	private nint renderer;
+	private readonly nint window;
+	private readonly nint renderer;
 
 	public Gameboy(string romName)
 	{
 		SDL_Init(SDL_INIT_VIDEO);
 
-		window = SDL_CreateWindow("SpecBoy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160 * scale, 144 * scale, SDL_WindowFlags.SDL_WINDOW_SHOWN);
+		window = SDL_CreateWindow("SpecBoy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160 * Scale, 144 * Scale, SDL_WindowFlags.SDL_WINDOW_SHOWN);
 		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
 		timers = new Timers();
-		//joypad = new Joypad(window);
-		ppu = new Ppu(renderer, scale);
+		joypad = new Joypad();
+		ppu = new Ppu(renderer);
 		cartridge = new Cartridge(romName);
 		mem = new Memory(timers, ppu, joypad, cartridge);
 		cpu = new Cpu(mem, ppu, timers);
@@ -55,11 +55,22 @@ class Gameboy
 
 			while (SDL_PollEvent(out SDL_Event e) != 0)
 			{
-				if (e.type == SDL_EventType.SDL_QUIT)
+				switch (e.type)
 				{
-					quit = true;
+					case SDL_EventType.SDL_QUIT:
+						quit = true;
+						break;
+
+					case SDL_EventType.SDL_KEYDOWN:
+						if (e.key.keysym.sym == SDL_Keycode.SDLK_ESCAPE)
+						{
+							quit = true;
+						}
+						break;
 				}
 			}
+
+			joypad.GetInput();
 
 			long prevPC = 0;
 
@@ -87,5 +98,9 @@ class Gameboy
 			ppu.HitVSync = false;
 			prevCycles = cpu.Cycles;
 		}
+
+		SDL_DestroyRenderer(renderer);
+		SDL_DestroyWindow(window);
+		SDL_Quit();
 	}
 }

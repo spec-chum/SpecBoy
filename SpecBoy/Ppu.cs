@@ -50,7 +50,7 @@ class Ppu
 	private byte lyc;
 	private bool onLine153;
 
-	public Ppu(nint renderer, int scale)
+	public Ppu(nint renderer)
 	{
 		vRam = new byte[0x2000];
 		oam = new byte[0xa0];
