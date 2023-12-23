@@ -1,11 +1,7 @@
 ﻿using CommunityToolkit.HighPerformance;
-using SFML.Graphics;
-using SFML.System;
 using System;
 using System.Runtime.CompilerServices;
-
-// Avoid conflict with our Sprite class - I refuse to rename it :D
-using SfmlSprite = SFML.Graphics.Sprite;
+using static SDL2.SDL;
 
 namespace SpecBoy;
 
@@ -22,12 +18,11 @@ class Ppu
 {
 	private const int ScreenWidth = 160;
 	private const int ScreenHeight = 144;
-	private const int SpanLen = ScreenWidth * sizeof(uint);
 	private const int OamCycles = 80;
 	private const int LcdTransferCycles = 172;
 	private const int LineTotalCycles = 456;
 
-	private readonly uint[] colours = { 0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff };
+	private readonly uint[] colours = [0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff];
 
 	public byte Scy;
 	public byte Scx;
@@ -39,12 +34,11 @@ class Ppu
 
 	public bool HitVSync;
 
-	// SFML
-	private readonly RenderWindow window;
-	private readonly Texture texture;
-	private readonly SfmlSprite framebuffer;
+	// SDL
+	private readonly nint renderer;
+	private readonly nint texture;
 
-	private readonly byte[] pixels;
+	private readonly uint[] pixels;
 	private readonly byte[] vRam;
 	private readonly byte[] oam;
 
@@ -56,16 +50,14 @@ class Ppu
 	private byte lyc;
 	private bool onLine153;
 
-	public Ppu(RenderWindow window, int scale)
+	public Ppu(nint renderer, int scale)
 	{
 		vRam = new byte[0x2000];
 		oam = new byte[0xa0];
-		pixels = new byte[ScreenWidth * ScreenHeight * sizeof(uint)];
+		pixels = new uint[ScreenWidth * ScreenHeight];
 
-		this.window = window;
-		texture = new Texture(ScreenWidth, ScreenHeight);
-		framebuffer = new SfmlSprite(texture);
-		framebuffer.Scale = new Vector2f(scale, scale);
+		this.renderer = renderer;
+		texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, (int)SDL_TextureAccess.SDL_TEXTUREACCESS_STREAMING, 160, 144);
 
 		stat.Init();
 	}
@@ -544,16 +536,21 @@ class Ppu
 
 	private void RenderScanline()
 	{
-		var pixelSpan = new Span<byte>(pixels, Ly * SpanLen, SpanLen).Cast<byte, uint>();
+		var pixelSpan = new Span<uint>(pixels, Ly * ScreenWidth, ScreenWidth);
 		RenderBackground(pixelSpan);
 		RenderSprites(pixelSpan);
 	}
 
 	private void RenderFrame()
 	{
-		texture.Update(pixels);
-		window.Draw(framebuffer);
-		window.Display();
+		unsafe
+		{
+			SDL_UpdateTexture(texture, nint.Zero, (nint)Unsafe.AsPointer(ref pixels.DangerousGetReference()), ScreenWidth * sizeof(uint));
+		}
+
+		SDL_RenderClear(renderer);
+		SDL_RenderCopy(renderer, texture, nint.Zero, nint.Zero);
+		SDL_RenderPresent(renderer);
 	}
 
 	private uint GetColourFromPalette(int colour, int palette)

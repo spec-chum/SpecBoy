@@ -19,7 +19,7 @@ class Memory
 	{
 		this.timers = timers;
 		this.ppu = ppu;
-		this.joypad = joypad;
+		//this.joypad = joypad;
 		this.cartridge = cartridge;
 
 		Mem = new byte[0x10000];
@@ -114,7 +114,7 @@ class Memory
 			<= 0xfeff => 0,
 
 			// IO Registers
-			0xff00 => joypad.JoyP,
+			//0xff00 => joypad.JoyP,
 
 			// Serial Transfer Control
 			0xff02 => (byte)(Mem[address] | 0x7e),
@@ -228,7 +228,7 @@ class Memory
 				break;
 
 			case 0xff00:
-				joypad.JoyP = value;
+				//joypad.JoyP = value;
 				break;
 
 			// Timers

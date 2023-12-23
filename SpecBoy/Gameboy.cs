@@ -1,6 +1,7 @@
 ﻿using System;
-using SFML.Graphics;
-using SFML.Window;
+
+using static SDL2.SDL;
+using static SDL2.SDL.SDL_RendererFlags;
 
 namespace SpecBoy;
 
@@ -16,17 +17,19 @@ class Gameboy
 	private readonly Cartridge cartridge;
 
 	// SFML
-	private readonly RenderWindow window;
+	private nint window;
+	private nint renderer;
 
 	public Gameboy(string romName)
 	{
-		window = new RenderWindow(new VideoMode(160 * scale, 144 * scale), "SpecBoy", Styles.Default);
-		window.SetFramerateLimit(0);
-		//window.SetVerticalSyncEnabled(false);
+		SDL_Init(SDL_INIT_VIDEO);
+
+		window = SDL_CreateWindow("SpecBoy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 160 * scale, 144 * scale, SDL_WindowFlags.SDL_WINDOW_SHOWN);
+		renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
 		timers = new Timers();
-		joypad = new Joypad(window);
-		ppu = new Ppu(window, scale);
+		//joypad = new Joypad(window);
+		ppu = new Ppu(renderer, scale);
 		cartridge = new Cartridge(romName);
 		mem = new Memory(timers, ppu, joypad, cartridge);
 		cpu = new Cpu(mem, ppu, timers);
@@ -37,8 +40,6 @@ class Gameboy
 		long prevCycles = 0;
 		bool logging = false;
 
-		window.Closed += (s, e) => window.Close();
-
 		// Timer starts 4t before CPU
 		timers.Tick();
 
@@ -46,12 +47,19 @@ class Gameboy
 		timers.Tick();
 		ppu.Tick();
 
-		while (window.IsOpen)
+		bool quit = false;
+
+		while (!quit)
 		{
 			long cyclesThisFrame = 0;
-			long currentCycles = 0;
 
-			window.DispatchEvents();
+			while (SDL_PollEvent(out SDL_Event e) != 0)
+			{
+				if (e.type == SDL_EventType.SDL_QUIT)
+				{
+					quit = true;
+				}
+			}
 
 			long prevPC = 0;
 
@@ -71,7 +79,7 @@ class Gameboy
 					prevPC = cpu.PC;
 				}
 
-				currentCycles = cpu.Execute();
+				long currentCycles = cpu.Execute();
 				cyclesThisFrame += currentCycles - prevCycles;
 				prevCycles = currentCycles;
 			}
