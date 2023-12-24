@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Frozen;
-using System.Collections.Generic;
+﻿using CommunityToolkit.HighPerformance;
 
 using static SDL2.SDL;
 using static SDL2.SDL.SDL_Scancode;
@@ -13,32 +11,15 @@ class Joypad
 	private bool buttonsEnabled;
 	private bool isDetectingSgb;
 
-	private int up;
-	private int down;
-	private int left;
-	private int right;
-	private int buttonA;
-	private int buttonB;
-	private int start;
-	private int select;
+	private byte buttons;
 
-	private readonly FrozenDictionary<SDL_Scancode, Action> keymap;
+	private readonly SDL_Scancode[] keymap = [
+		SDL_SCANCODE_RIGHT, SDL_SCANCODE_LEFT, SDL_SCANCODE_UP, SDL_SCANCODE_DOWN,
+		SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D, SDL_SCANCODE_F];
 
 	public Joypad()
 	{
-		keymap = new Dictionary<SDL_Scancode, Action>
-		{
-			{ SDL_SCANCODE_UP, () => { up = 0; } },
-			{ SDL_SCANCODE_DOWN, () => { down = 0; } },
-			{ SDL_SCANCODE_LEFT, () => { left = 0; } },
-			{ SDL_SCANCODE_RIGHT, () => { right = 0; } },
-			{ SDL_SCANCODE_S, () => { buttonA = 0; } },
-			{ SDL_SCANCODE_A, () => { buttonB = 0; } },
-			{ SDL_SCANCODE_F, () => { start = 0; } },
-			{ SDL_SCANCODE_D, () => { select = 0; } },
-		}.ToFrozenDictionary();
-
-		ResetButtons();
+		buttons = 0xff;
 	}
 
 	public byte JoyP
@@ -51,23 +32,27 @@ class Joypad
 				return 0xcf;
 			}
 
-			byte value = (byte)(0xc0 | (!buttonsEnabled).ToBytePower(5) | (!dpadEnabled).ToBytePower(4));
+			byte value = (byte)(0xc0 | buttonsEnabled.ToBytePower(5) | dpadEnabled.ToBytePower(4));
 
-			if (buttonsEnabled)
+			if (!buttonsEnabled)
 			{
-				value |= (byte)((start << 3) | (select << 2) | (buttonB << 1) | buttonA);
+				value |= (byte)(buttons >> 4);
 			}
-			else if (dpadEnabled)
+			else if (!dpadEnabled)
 			{
-				value |= (byte)((down << 3) | (up << 2) | (left << 1) | right);
+				value |= (byte)(buttons & 0x0f);
+			}
+			else
+			{
+				value |= 0x0f;
 			}
 
 			return value;
 		}
 		set
 		{
-			buttonsEnabled = !value.IsBitSet(5);
-			dpadEnabled = !value.IsBitSet(4);
+			buttonsEnabled = value.IsBitSet(5);
+			dpadEnabled = value.IsBitSet(4);
 
 			// Check for SGB detection
 			isDetectingSgb = !buttonsEnabled && !dpadEnabled;
@@ -76,36 +61,19 @@ class Joypad
 
 	public void GetInput()
 	{
-		ResetButtons();
-
-		bool fireInterrupt = false;
+		buttons = 0;
 
 		unsafe
 		{
 			byte* keyState = (byte*)SDL_GetKeyboardState(out _).ToPointer();
 
-			foreach (var keys in keymap)
+			for (int i = 0; i < keymap.Length; i++)
 			{
-				if (keyState[(int)keys.Key] != 0)
-				{
-					keys.Value.Invoke();
-					fireInterrupt = true;
-				}
+				buttons |= (byte)(keyState[(int)keymap.DangerousGetReferenceAt(i)] << i);
 			}
 		}
+		buttons ^= 0xff;
 
-		Interrupts.JoypadIrqReq = fireInterrupt;
-	}
-
-	private void ResetButtons()
-	{
-		up = 1;
-		down = 1;
-		left = 1;
-		right = 1;
-		buttonA = 1;
-		buttonB = 1;
-		start = 1;
-		select = 1;
+		Interrupts.JoypadIrqReq = buttons != 0xff;
 	}
 }

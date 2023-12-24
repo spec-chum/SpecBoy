@@ -2,7 +2,7 @@
 
 class Timers
 {
-	private readonly int[] triggerBits = new int[4] { 9, 3, 5, 7 };
+	private readonly int[] triggerBits = [9, 3, 5, 7];
 
 	private int divBit;
 	private ushort divCounter;

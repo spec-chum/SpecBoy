@@ -86,7 +86,7 @@ class Gameboy
 			if (!Fullspeed && elapsedTime < FrameInterval)
 			{
 				var remainingTime = FrameInterval - elapsedTime;
-				Thread.Sleep((int)(remainingTime));
+				Thread.Sleep((int)remainingTime);
 			}
 
 			ppu.HitVSync = false;
