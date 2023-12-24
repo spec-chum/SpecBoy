@@ -18,13 +18,19 @@ class Joypad
 	{
 		get
 		{
+			byte result = (byte)(0xc0 | buttonsEnabled.ToBytePower(5) | dpadEnabled.ToBytePower(4));
+
 			// DMG returns 0x0f as ID (top 2 bits unused, so return 0xcf)
 			if (buttonsEnabled == dpadEnabled)
 			{
-				return 0xcf;
+				result |= !buttonsEnabled ? (byte)(GetInput(0) & GetInput(4)) : (byte)0x0f;
+			}
+			else
+			{
+				result |= GetInput(!buttonsEnabled ? 4 : 0);
 			}
 
-			return (byte)(0xc0 | buttonsEnabled.ToBytePower(5) | dpadEnabled.ToBytePower(4) | GetInput());
+			return result;
 		}
 		set
 		{
@@ -33,12 +39,11 @@ class Joypad
 		}
 	}
 
-	public byte GetInput()
+	public byte GetInput(int offset)
 	{
 		byte result = 0;
-		int offset = !dpadEnabled ? 0 : 4;
-
-        unsafe
+		
+		unsafe
 		{
 			byte* keyState = (byte*)SDL_GetKeyboardState(out _).ToPointer();
 

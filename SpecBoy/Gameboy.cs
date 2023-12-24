@@ -6,9 +6,10 @@ namespace SpecBoy;
 
 class Gameboy
 {
-	private const bool Fullspeed = false;
 	private const double FrameInterval = 1000.0 / 59.7;
 	private const int Scale = 6;
+
+	private bool fullspeed = false;
 
 	private readonly Cpu cpu;
 	private readonly Memory mem;
@@ -67,7 +68,11 @@ class Gameboy
 						{
 							quit = true;
 						}
-						break;
+                        else if (e.key.keysym.sym == SDL_Keycode.SDLK_SPACE)
+                        {
+                            fullspeed = !fullspeed;
+                        }
+                        break;
 				}
 			}
 
@@ -81,7 +86,7 @@ class Gameboy
 
 			var elapsedTime = stopwatch.Elapsed.TotalMilliseconds - frameStart;
 			
-			if (!Fullspeed && elapsedTime < FrameInterval)
+			if (!fullspeed && elapsedTime < FrameInterval)
 			{
 				var remainingTime = FrameInterval - elapsedTime;
 				Thread.Sleep((int)remainingTime);
