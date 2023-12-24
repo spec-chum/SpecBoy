@@ -71,8 +71,6 @@ class Gameboy
 				}
 			}
 
-			joypad.GetInput();
-
 			long cyclesThisFrame = 0;
 			while (cyclesThisFrame < 70224 && !ppu.HitVSync)
 			{
