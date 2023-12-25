@@ -1,14 +1,18 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
+
 using static SDL2.SDL;
 
 namespace SpecBoy;
 
 class Gameboy
 {
-	private const double FrameInterval = 1000.0 / 59.7;
 	private const int Scale = 6;
+	private const int FPSQueueDepth = 30;
 
+	private readonly long FrameInterval = (long)(Stopwatch.Frequency / 59.7);
 	private bool fullspeed = false;
 
 	private readonly Cpu cpu;
@@ -18,7 +22,7 @@ class Gameboy
 	private readonly Joypad joypad;
 	private readonly Cartridge cartridge;
 
-	// SFML
+	// SDL
 	private readonly nint window;
 	private readonly nint renderer;
 
@@ -39,7 +43,7 @@ class Gameboy
 
 	public void Run()
 	{
-		Stopwatch stopwatch = Stopwatch.StartNew();
+		Queue<double> frameTimes = new (FPSQueueDepth);
 
 		// Timer starts 4t before CPU
 		timers.Tick();
@@ -53,7 +57,7 @@ class Gameboy
 
 		while (!quit)
 		{
-			var frameStart = stopwatch.Elapsed.TotalMilliseconds;
+			var frameStart = Stopwatch.GetTimestamp();
 
 			while (SDL_PollEvent(out SDL_Event e) != 0)
 			{
@@ -68,11 +72,11 @@ class Gameboy
 						{
 							quit = true;
 						}
-                        else if (e.key.keysym.sym == SDL_Keycode.SDLK_SPACE)
-                        {
-                            fullspeed = !fullspeed;
-                        }
-                        break;
+						else if (e.key.keysym.sym == SDL_Keycode.SDLK_SPACE)
+						{
+							fullspeed = !fullspeed;
+						}
+						break;
 				}
 			}
 
@@ -84,16 +88,26 @@ class Gameboy
 				prevCycles = currentCycles;
 			}
 
-			var elapsedTime = stopwatch.Elapsed.TotalMilliseconds - frameStart;
-			
-			if (!fullspeed && elapsedTime < FrameInterval)
-			{
-				var remainingTime = FrameInterval - elapsedTime;
-				Thread.Sleep((int)remainingTime);
-			}
-
 			ppu.HitVSync = false;
 			prevCycles = cpu.Cycles;
+
+			if (!fullspeed)
+			{
+				int sleepTime = (int)((1000 * (FrameInterval - (Stopwatch.GetTimestamp() - frameStart)) / (double)Stopwatch.Frequency) - 0.5);
+				if (sleepTime > 2)
+				{
+					Thread.Sleep(sleepTime);
+					while (Stopwatch.GetTimestamp() - frameStart < FrameInterval) { } 
+				}
+			}
+
+			frameTimes.Enqueue((double)((Stopwatch.GetTimestamp() - frameStart) / (double)Stopwatch.Frequency));
+			if (frameTimes.Count > FPSQueueDepth)
+			{
+				frameTimes.Dequeue();
+			}
+			double averageFPS = frameTimes.Sum() / frameTimes.Count;
+			SDL_SetWindowTitle(window, $"SpecBoy - FPS: {1.0 / averageFPS:F2}");
 		}
 
 		SDL_DestroyRenderer(renderer);
