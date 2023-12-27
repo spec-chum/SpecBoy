@@ -1141,7 +1141,7 @@ class Cpu
 
 	private void Bit(byte value, int bit)
 	{			
-		zero = (value & (1 << bit)) == 0;
+		zero = !value.IsBitSet(bit);
 		negative = false;
 		halfCarry = true;
 	}
