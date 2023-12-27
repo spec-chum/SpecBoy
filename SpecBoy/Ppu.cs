@@ -339,7 +339,7 @@ class Ppu
 		}
 	}
 
-	private int RoundToMCycles(int value)
+	private static int RoundToMCycles(int value)
 	{
 		return (value + 3) & -4;
 	}
@@ -363,7 +363,7 @@ class Ppu
 			return;
 		}
 
-		ushort tileData = (ushort)(lcdc.TileDataSelect ? 0x8000 : 0x9000);
+		ushort tileDataLocation = (ushort)(lcdc.TileDataSelect ? 0x8000 : 0x9000);
 		ushort bgTilemap = (ushort)(lcdc.BgTileMapSelect ? 0x9c00 : 0x9800);
 		ushort windowTilemap = (ushort)(lcdc.WindowTileMapSelect ? 0x9c00 : 0x9800);
 		short winX = (short)(Wx - 7);
@@ -400,22 +400,16 @@ class Ppu
 
 			ref byte tileIndex = ref ReadVRamByteInternal(tilemap + (ty / 8 * 32) + (tx / 8));
 
-			byte tileX = (byte)(tx & 7);
+			// tileX is reversed as we draw it backwards below
+			byte tileX = (byte)((tx & 7) ^ 7);
 			byte tileY = (byte)(ty & 7);
 
-			ushort tileLocation;
-			if (tileData == 0x8000)
-			{
-				tileLocation = (ushort)(tileData + (tileIndex * 16) + (tileY * 2));
-			}
-			else
-			{
-				tileLocation = (ushort)(tileData + ((sbyte)tileIndex * 16) + (tileY * 2));
-			}
+			ref Mem16 tileData = ref tileDataLocation == 0x8000 ? ref ReadVRamWordInternal((ushort)(tileDataLocation + (tileIndex * 16) + (tileY * 2))) :
+				ref ReadVRamWordInternal((ushort)(tileDataLocation + ((sbyte)tileIndex * 16) + (tileY * 2)));            
 
-			ref Mem16 tl = ref ReadVRamWordInternal(tileLocation);
-
-			int colour = (tl.Bytes.High.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (tl.Bytes.Low.IsBitSet(7 - tileX) ? 1 : 0);
+			// Get colour (back to front)
+			int colour = tileData.Bytes.High.IsBitSet(tileX).ToBytePower(1) |
+				(tileData.Bytes.Low.IsBitSet(tileX).ToByte());
 			pixelSpan[x] = GetColourFromPalette(colour, Bgp);
 		}
 
@@ -483,7 +477,7 @@ class Ppu
 				tileIndex += (ushort)((sprite.TileNum & 0xfe) * 16 + (tileY * 2));
 			}
 
-			ref Mem16 ti = ref ReadVRamWordInternal(tileIndex);
+			ref Mem16 tileData = ref ReadVRamWordInternal(tileIndex);
 
 			// Set sprite palette
 			int pal = sprite.PalNum ? Obp1 : Obp0;
@@ -512,10 +506,11 @@ class Ppu
 					continue;
 				}
 
-				byte tileX = (byte)(sprite.XFlip ? 7 - tilePixel : tilePixel);
+				// Ternary is reversed as we draw it backwards below
+				byte tileX = (byte)(sprite.XFlip ? tilePixel : 7 - tilePixel);
 
-				// Get colour
-				int colour = (ti.Bytes.High.IsBitSet(7 - tileX) ? (1 << 1) : 0) | (ti.Bytes.Low.IsBitSet(7 - tileX) ? 1 : 0);
+				// Get colour (back to front)
+				int colour = tileData.Bytes.High.IsBitSet(tileX).ToBytePower(1) | (tileData.Bytes.Low.IsBitSet(tileX).ToByte());
 
 				// Move on if pixel is transparent anyway
 				if (colour == 0)
