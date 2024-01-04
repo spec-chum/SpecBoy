@@ -8,7 +8,7 @@ readonly struct Sprite
 		X = (short)(value.Bytes.Second - 8);
 		TileNum = value.Bytes.Third;
 
-		var attributes = value.Bytes.Forth;
+        byte attributes = value.Bytes.Forth;
 
 		Priority = attributes.IsBitSet(7);
 		YFlip = attributes.IsBitSet(6);

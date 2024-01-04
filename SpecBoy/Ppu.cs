@@ -456,7 +456,7 @@ class Ppu
 
 		for (int i = 0; i < numSprites; i++)
 		{
-			ref var sprite = ref spriteSpan.DangerousGetReferenceAt(i);
+			ref Sprite sprite = ref spriteSpan.DangerousGetReferenceAt(i);
 
 			// Is any of sprite actually visible?
 			if (sprite.X >= ScreenWidth)
@@ -498,7 +498,7 @@ class Ppu
 				}
 
 				// Optimise out some bounds checks
-				ref var pixelDrawnRef = ref pixelDrawn.DangerousGetReferenceAt(currentPixel);
+				ref bool pixelDrawnRef = ref pixelDrawn.DangerousGetReferenceAt(currentPixel);
 
 				// Already drawn?
 				if (pixelDrawnRef)
@@ -518,7 +518,7 @@ class Ppu
 					continue;
 				}
 
-				ref var currentPixelRef = ref pixelSpan.DangerousGetReferenceAt(currentPixel);
+				ref uint currentPixelRef = ref pixelSpan.DangerousGetReferenceAt(currentPixel);
 
 				// Check priority or draw over transparent pixel
 				if (!sprite.Priority || currentPixelRef == GetColourFromPalette(0, Bgp))

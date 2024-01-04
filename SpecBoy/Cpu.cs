@@ -221,7 +221,6 @@ class Cpu
 
 			// RLCA - Same as RLC A but Zero always false
 			case 0x07:
-				//A = Rlc(A);
 				Rlc(7);
 				zero = false;
 				break;
@@ -265,14 +264,12 @@ class Cpu
 
 			// RRCA - same as RRC A except Zero always false
 			case 0xf:
-				//A = Rrc(A);
 				Rrc(7);
 				zero = false;
 				break;
 
 			// RLA  - same as RL A except Zero always false
 			case 0x17:
-				//A = Rl(A);
 				Rl(7);
 				zero = false;
 				break;
@@ -284,7 +281,6 @@ class Cpu
 
 			// RRA - same as RR A except Zero always false
 			case 0x1f:
-				//A = Rr(A);
 				Rr(7);
 				zero = false;
 				break;
@@ -567,8 +563,8 @@ class Cpu
 
 	private void DecodeCB()
 	{
-		var opcode = ReadNextByte();
-		var regId = opcode & 0x07;
+        byte opcode = ReadNextByte();
+        int regId = opcode & 0x07;
 
 		switch (opcode)
 		{
@@ -882,7 +878,7 @@ class Cpu
 
 	private ushort Pop()
 	{
-		var address = ReadWord(SP);
+        ushort address = ReadWord(SP);
 		SP += 2;
 		return address;
 	}
@@ -1118,6 +1114,7 @@ class Cpu
 		halfCarry = false;
 		carry = false;
 	}
+
 	private void Ccf()
 	{
 		negative = false;

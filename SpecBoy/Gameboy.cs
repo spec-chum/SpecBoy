@@ -57,7 +57,7 @@ class Gameboy
 
 		while (!quit)
 		{
-			var frameStart = Stopwatch.GetTimestamp();
+            long frameStart = Stopwatch.GetTimestamp();
 
 			while (SDL_PollEvent(out SDL_Event e) != 0)
 			{
