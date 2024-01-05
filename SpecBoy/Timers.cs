@@ -1,6 +1,6 @@
 ﻿namespace SpecBoy;
 
-class Timers
+sealed class Timers
 {
 	private readonly int[] triggerBits = [9, 3, 5, 7];
 

@@ -15,7 +15,7 @@ enum Mode
 	None = 256
 }
 
-class Ppu
+sealed class Ppu
 {
 	private const int ScreenWidth = 160;
 	private const int ScreenHeight = 144;
@@ -541,11 +541,11 @@ class Ppu
 	{
 		unsafe
 		{
-			SDL_UpdateTexture(texture, nint.Zero, (nint)Unsafe.AsPointer(ref pixels.DangerousGetReference()), ScreenWidth * sizeof(uint));
+            _ = SDL_UpdateTexture(texture, nint.Zero, (nint)Unsafe.AsPointer(ref pixels.DangerousGetReference()), ScreenWidth * sizeof(uint));
 		}
 
-		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, texture, nint.Zero, nint.Zero);
+        _ = SDL_RenderClear(renderer);
+        _ = SDL_RenderCopy(renderer, texture, nint.Zero, nint.Zero);
 		SDL_RenderPresent(renderer);
 	}
 

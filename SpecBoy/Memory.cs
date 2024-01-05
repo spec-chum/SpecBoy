@@ -2,7 +2,7 @@
 
 namespace SpecBoy;
 
-class Memory
+sealed class Memory
 {
 	private readonly Timers timers;
 	private readonly Ppu ppu;

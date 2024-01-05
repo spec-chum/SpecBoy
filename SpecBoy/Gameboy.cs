@@ -7,13 +7,13 @@ using static SDL2.SDL;
 
 namespace SpecBoy;
 
-class Gameboy
+sealed class Gameboy
 {
 	private const int Scale = 6;
 	private const int FPSQueueDepth = 30;
 
 	private readonly long FrameInterval = (long)(Stopwatch.Frequency / 59.7);
-	private bool fullspeed = false;
+	private bool fullspeed;
 
 	private readonly Cpu cpu;
 	private readonly Memory mem;
@@ -28,7 +28,7 @@ class Gameboy
 
 	public Gameboy(string romName)
 	{
-		SDL_Init(SDL_INIT_VIDEO);
+        _ = SDL_Init(SDL_INIT_VIDEO);
 
 		window = SDL_CreateWindow("SpecBoy", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 160 * Scale, 144 * Scale, SDL_WindowFlags.SDL_WINDOW_SHOWN);
 		renderer = SDL_CreateRenderer(window, -1, SDL_RendererFlags.SDL_RENDERER_ACCELERATED);

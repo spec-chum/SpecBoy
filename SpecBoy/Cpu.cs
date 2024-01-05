@@ -3,7 +3,7 @@ using System;
 
 namespace SpecBoy;
 
-class Cpu
+sealed class Cpu
 {
 	private readonly Memory mem;
 	private readonly Timers timers;

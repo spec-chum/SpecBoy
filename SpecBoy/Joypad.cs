@@ -5,7 +5,7 @@ using static SDL2.SDL.SDL_Scancode;
 
 namespace SpecBoy;
 
-class Joypad
+sealed class Joypad
 {
 	private bool buttonsEnabled;
 	private bool dpadEnabled;

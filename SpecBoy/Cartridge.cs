@@ -4,7 +4,7 @@ using System.IO.MemoryMappedFiles;
 
 namespace SpecBoy;
 
-class Cartridge
+sealed class Cartridge
 {
 	public Func<int, byte> ReadByte;
 	public Action<int, byte> WriteByte;
@@ -86,7 +86,7 @@ class Cartridge
 
 		CartType cartType = (CartType)rom[0x0147];
 		string typeString = cartType.ToString();
-		Console.WriteLine($"ROM type: {typeString.ToUpper()} ({(int)cartType})");
+		Console.WriteLine($"ROM type: {typeString.ToUpperInvariant()} ({(int)cartType})");
 
 		romSize = 0x20 << rom[0x0148];
 		Console.WriteLine($"ROM size: {romSize}K ({romSize >> 4} banks)");
