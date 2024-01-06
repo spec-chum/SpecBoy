@@ -135,7 +135,7 @@ sealed class Cpu
 
 		// Opcode execute logic
 		switch (opcode)
-		{	
+		{
 			// NOP
 			case 0x00:
 				break;
@@ -179,7 +179,7 @@ sealed class Cpu
 				regId = (opcode >> 4) & 0x03;
 				IncR16(regId);
 				break;
-			
+
 			// INC R8
 			case 0x04:
 			case 0x14:
@@ -284,7 +284,7 @@ sealed class Cpu
 				Rr(7);
 				zero = false;
 				break;
-				
+
 				// LD A, (HL+)
 			case 0x2a:
 				A = ReadByte(HL);
@@ -924,7 +924,7 @@ sealed class Cpu
 		if (opcode == 0xc9)
 		{
 			PC = Pop();
-		}			
+		}
 		else if (TestCondition(opcode))
 		{
 			CycleTick();
@@ -1137,7 +1137,7 @@ sealed class Cpu
 	}
 
 	private void Bit(byte value, int bit)
-	{			
+	{
 		zero = !value.IsBitSet(bit);
 		negative = false;
 		halfCarry = true;

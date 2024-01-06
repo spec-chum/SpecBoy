@@ -97,8 +97,8 @@ sealed class Ppu
 
 	public byte Ly { get; private set; }
 
-	public byte Lyc 
-	{ 
+	public byte Lyc
+	{
 		get => lyc;
 		set
 		{
@@ -405,7 +405,7 @@ sealed class Ppu
 			byte tileY = (byte)(ty & 7);
 
 			ref Mem16 tileData = ref tileDataLocation == 0x8000 ? ref ReadVRamWordInternal((ushort)(tileDataLocation + (tileIndex * 16) + (tileY * 2))) :
-				ref ReadVRamWordInternal((ushort)(tileDataLocation + ((sbyte)tileIndex * 16) + (tileY * 2)));            
+				ref ReadVRamWordInternal((ushort)(tileDataLocation + ((sbyte)tileIndex * 16) + (tileY * 2)));
 
 			// Get colour (back to front)
 			int colour = tileData.Bytes.High.IsBitSet(tileX).ToBytePower(1) |
@@ -469,12 +469,12 @@ sealed class Ppu
 			if (spriteSize == 8)
 			{
 				tileY = (byte)(sprite.YFlip ? 7 - (Ly - sprite.Y) : (Ly - sprite.Y));
-				tileIndex += (ushort)(sprite.TileNum * 16 + (tileY * 2));
+				tileIndex += (ushort)((sprite.TileNum * 16) + (tileY * 2));
 			}
 			else
 			{
 				tileY = (byte)(sprite.YFlip ? 15 - (Ly - sprite.Y) : (Ly - sprite.Y));
-				tileIndex += (ushort)((sprite.TileNum & 0xfe) * 16 + (tileY * 2));
+				tileIndex += (ushort)(((sprite.TileNum & 0xfe) * 16) + (tileY * 2));
 			}
 
 			ref Mem16 tileData = ref ReadVRamWordInternal(tileIndex);
@@ -490,7 +490,7 @@ sealed class Ppu
 				if (currentPixel < 0)
 				{
 					continue;
-				}					
+				}
 				else if (currentPixel >= ScreenWidth)
 				{
 					// Do next sprite if remaining pixels off screen

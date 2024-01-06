@@ -44,7 +44,7 @@ sealed class Timers
 			{
 				return;
 			}
-			
+
 			// Writing to TIMA can cancel IRQ request, do that here
 			tima = value;
 			reloadTima = false;
@@ -66,7 +66,7 @@ sealed class Timers
 		}
 	}
 
-	public byte Tac 
+	public byte Tac
 	{
 		get => tac;
 		set

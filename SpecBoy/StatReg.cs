@@ -84,7 +84,7 @@ struct StatReg
 		{
 			return;
 		}
-		
+
 		bool oldIntRequest = intRequest;
 
 		if (mode != Mode.None)

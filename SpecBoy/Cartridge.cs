@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Text;
 
 namespace SpecBoy;
 
@@ -72,19 +73,11 @@ sealed class Cartridge
 	private void GetRomInfo()
 	{
 		Console.Write("ROM name: ");
-		for (int i = 0; i < 16; i++)
-		{
-			char c = (char)rom[0x0134 + i];
-			if (c == 0)
-			{
-				break;
-			}
-			Console.Write(c);
-		}
-
+		ReadOnlySpan<byte> romName = rom.AsSpan().Slice(0x0134, 16);
+		Console.Write(Encoding.ASCII.GetString(romName[..romName.IndexOf((byte)0)]));
 		Console.WriteLine();
 
-		CartType cartType = (CartType)rom[0x0147];
+		var cartType = (CartType)rom[0x0147];
 		string typeString = cartType.ToString();
 		Console.WriteLine($"ROM type: {typeString.ToUpperInvariant()} ({(int)cartType})");
 
@@ -161,16 +154,16 @@ sealed class Cartridge
 			var n when n <= 0x3fff && !bankingMode => rom[address],
 
 			// ROM bank0 - Banked
-			<= 0x3fff => rom[0x4000 * (bankHighBits & bankLimitMask) + address],
+			<= 0x3fff => rom[(0x4000 * (bankHighBits & bankLimitMask)) + address],
 
 			// ROM bank n
-			<= 0x7fff => rom[0x4000 * ((romBank | bankHighBits) & bankLimitMask) + (address & 0x3fff)],
+			<= 0x7fff => rom[(0x4000 * ((romBank | bankHighBits) & bankLimitMask)) + (address & 0x3fff)],
 
 			// Cartridge RAM - Non-banked
 			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled && !bankingMode => ram.ReadByte(address & 0x1fff),
 
 			// Cartridge RAM - Banked
-			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram.ReadByte(0x2000 * ramBank + (address & 0x1fff)),
+			var n when n >= 0xa000 && n <= 0xbfff && ramEnabled => ram.ReadByte((0x2000 * ramBank) + (address & 0x1fff)),
 
 			_ => 0xff,
 		};
@@ -218,7 +211,7 @@ sealed class Cartridge
 
 			// RAM - Banked
 			case var n when n >= 0xa000 && n <= 0xbfff && ramEnabled:
-				ram.Write(0x2000 * ramBank + (address & 0x1fff), value);
+				ram.Write((0x2000 * ramBank) + (address & 0x1fff), value);
 				break;
 
 			default:

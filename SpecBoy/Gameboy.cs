@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 
 using static SDL2.SDL;
@@ -10,7 +9,7 @@ namespace SpecBoy;
 sealed class Gameboy
 {
 	private const int Scale = 6;
-	private const int FPSQueueDepth = 30;
+	private const int FPSQueueDepth = 4;
 
 	private readonly long FrameInterval = (long)(Stopwatch.Frequency / 59.7);
 	private bool fullspeed;
@@ -28,7 +27,7 @@ sealed class Gameboy
 
 	public Gameboy(string romName)
 	{
-        _ = SDL_Init(SDL_INIT_VIDEO);
+		_ = SDL_Init(SDL_INIT_VIDEO);
 
 		window = SDL_CreateWindow("SpecBoy", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 160 * Scale, 144 * Scale, SDL_WindowFlags.SDL_WINDOW_SHOWN);
 		renderer = SDL_CreateRenderer(window, -1, SDL_RendererFlags.SDL_RENDERER_ACCELERATED);
@@ -57,7 +56,7 @@ sealed class Gameboy
 
 		while (!quit)
 		{
-            long frameStart = Stopwatch.GetTimestamp();
+			long frameStart = Stopwatch.GetTimestamp();
 
 			while (SDL_PollEvent(out SDL_Event e) != 0)
 			{
@@ -97,7 +96,7 @@ sealed class Gameboy
 				if (sleepTime > 2)
 				{
 					Thread.Sleep(sleepTime);
-					while (Stopwatch.GetTimestamp() - frameStart < FrameInterval) { } 
+					while (Stopwatch.GetTimestamp() - frameStart < FrameInterval) { }
 				}
 			}
 
@@ -106,7 +105,14 @@ sealed class Gameboy
 			{
 				frameTimes.Dequeue();
 			}
-			double averageFPS = frameTimes.Sum() / frameTimes.Count;
+
+			double averageFPS = 0.0;
+			foreach (double frameTime in frameTimes)
+			{
+				averageFPS += frameTime;
+			}
+			averageFPS /= frameTimes.Count;
+
 			SDL_SetWindowTitle(window, $"SpecBoy - FPS: {1.0 / averageFPS:F2}");
 		}
 

@@ -9,7 +9,7 @@ sealed class Joypad
 {
 	private bool buttonsEnabled;
 	private bool dpadEnabled;
-	
+
 	private readonly SDL_Scancode[] keymap = [
 		SDL_SCANCODE_RIGHT, SDL_SCANCODE_LEFT, SDL_SCANCODE_UP, SDL_SCANCODE_DOWN,
 		SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D, SDL_SCANCODE_F];
@@ -42,7 +42,7 @@ sealed class Joypad
 	public byte GetInput(int offset)
 	{
 		byte result = 0;
-		
+
 		unsafe
 		{
 			byte* keyState = (byte*)SDL_GetKeyboardState(out _).ToPointer();
