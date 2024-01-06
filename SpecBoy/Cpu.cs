@@ -563,8 +563,8 @@ sealed class Cpu
 
 	private void DecodeCB()
 	{
-        byte opcode = ReadNextByte();
-        int regId = opcode & 0x07;
+		byte opcode = ReadNextByte();
+		int regId = opcode & 0x07;
 
 		switch (opcode)
 		{
@@ -878,7 +878,7 @@ sealed class Cpu
 
 	private ushort Pop()
 	{
-        ushort address = ReadWord(SP);
+		ushort address = ReadWord(SP);
 		SP += 2;
 		return address;
 	}

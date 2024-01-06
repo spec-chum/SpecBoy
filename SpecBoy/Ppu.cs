@@ -541,11 +541,11 @@ sealed class Ppu
 	{
 		unsafe
 		{
-            _ = SDL_UpdateTexture(texture, nint.Zero, (nint)Unsafe.AsPointer(ref pixels.DangerousGetReference()), ScreenWidth * sizeof(uint));
+			_ = SDL_UpdateTexture(texture, nint.Zero, (nint)Unsafe.AsPointer(ref pixels.DangerousGetReference()), ScreenWidth * sizeof(uint));
 		}
 
-        _ = SDL_RenderClear(renderer);
-        _ = SDL_RenderCopy(renderer, texture, nint.Zero, nint.Zero);
+		_ = SDL_RenderClear(renderer);
+		_ = SDL_RenderCopy(renderer, texture, nint.Zero, nint.Zero);
 		SDL_RenderPresent(renderer);
 	}
 
