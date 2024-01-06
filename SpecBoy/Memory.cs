@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace SpecBoy;
+﻿namespace SpecBoy;
 
 sealed class Memory
 {

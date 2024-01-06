@@ -1,5 +1,4 @@
 ﻿using CommunityToolkit.HighPerformance;
-using System;
 using System.Runtime.CompilerServices;
 
 using static SDL2.SDL;
@@ -70,7 +69,7 @@ sealed class Ppu
 		{
 			bool oldEnabled = lcdc.LcdEnabled;
 			lcdc.SetByte(value);
-			stat.lcdEnabled = lcdc.LcdEnabled;
+			stat.LcdEnabled = lcdc.LcdEnabled;
 
 			// LCD being switched off?
 			if (oldEnabled && !lcdc.LcdEnabled)

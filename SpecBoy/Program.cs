@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace SpecBoy;
+﻿namespace SpecBoy;
 
 sealed class Program
 {
@@ -12,7 +10,7 @@ sealed class Program
 			return;
 		}
 
-		Gameboy gb = new Gameboy(args[0]);
+		Gameboy gb = new (args[0]);
 		gb.Run();
 	}
 }

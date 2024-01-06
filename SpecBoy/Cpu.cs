@@ -1,5 +1,4 @@
 ﻿using CommunityToolkit.HighPerformance;
-using System;
 
 namespace SpecBoy;
 

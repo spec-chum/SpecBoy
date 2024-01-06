@@ -9,7 +9,7 @@ struct StatReg
 	public bool LyCompareFlag;
 	public Mode CurrentMode;
 
-	public bool lcdEnabled;
+	public bool LcdEnabled;
 	public Mode PendingMode;
 	public Mode PendingInterrupt;
 
@@ -65,7 +65,7 @@ struct StatReg
 
 	public void CompareLyc(byte ly, bool reqInt = true)
 	{
-		if (!lcdEnabled)
+		if (!LcdEnabled)
 		{
 			return;
 		}
@@ -80,7 +80,7 @@ struct StatReg
 
 	public void RequestInterrupt(Mode mode)
 	{
-		if (!lcdEnabled)
+		if (!LcdEnabled)
 		{
 			return;
 		}
