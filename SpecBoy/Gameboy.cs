@@ -12,8 +12,14 @@ sealed class Gameboy
 	private const int FrameTimeArraySize = 4;
 	private const int CpuCyclesPerFrame = 70224;
 
-	private readonly long FrameInterval = (long)(Stopwatch.Frequency / 59.7);
+	private readonly long frameInterval = (long)(Stopwatch.Frequency / 59.7);
+	private readonly double rcpFrequency = 1.0 / Stopwatch.Frequency;
+	private readonly double frequencyDivisor = 1000.0 / Stopwatch.Frequency;
+
+	private long frameStart;
+	private long prevCycles;
 	private bool fullspeed;
+	private bool quit;
 
 	private readonly Cpu cpu;
 	private readonly Memory mem;
@@ -43,38 +49,26 @@ sealed class Gameboy
 
 	public void Run()
 	{
-		Span<double> frameTimeArray = stackalloc double[FrameTimeArraySize];
-		uint frameTimeIndex = 0;
-		long prevCycles = 0;
-		bool quit = false;
-
-		// Timer starts 4t before CPU
-		timers.Tick();
-
 		// First CPU instruction lags by 4t so tick other components to compensate
+		timers.Tick();
 		timers.Tick();
 		ppu.Tick();
 
+		Span<double> frameTimeArray = stackalloc double[FrameTimeArraySize];
+		uint frameTimeIndex = 0;
 		while (!quit)
 		{
-			long frameStart = Stopwatch.GetTimestamp();
+			frameStart = Stopwatch.GetTimestamp();
 
-			ProcessEvents(ref quit);
+			ProcessEvents();
+			RunFrame();
 
-			RunFrame(ref prevCycles);
-
-			if (!fullspeed)
-			{
-				FrameDelay(frameStart);
-			}
-
-			long frameEnd = Stopwatch.GetTimestamp();
-			frameTimeArray[(int)frameTimeIndex] = (double)((frameEnd - frameStart) / (double)Stopwatch.Frequency);
+			long elapsedTime = FrameDelay();
+			frameTimeArray[(int)frameTimeIndex] = elapsedTime * rcpFrequency;
 			frameTimeIndex = (frameTimeIndex + 1) % FrameTimeArraySize;
 
-			double frameTime = CalculateFrameTimeAverage(frameTimeArray);
-
-			SDL_SetWindowTitle(window, $"SpecBoy - FPS: {1.0 / frameTime:F2}");
+			double frameTimeAverage = CalculateFrameTimeAverage(frameTimeArray);
+			SDL_SetWindowTitle(window, $"SpecBoy - FPS: {1.0 / frameTimeAverage:F2}");
 		}
 
 		SDL_DestroyRenderer(renderer);
@@ -82,7 +76,7 @@ sealed class Gameboy
 		SDL_Quit();
 	}
 
-	private void ProcessEvents(ref bool quit)
+	private void ProcessEvents()
 	{
 		while (SDL_PollEvent(out SDL_Event e) != 0)
 		{
@@ -114,10 +108,11 @@ sealed class Gameboy
 			frameTime += frameTimeArray[i]; // should unroll with no bounds checks
 		}
 		frameTime *= 1.0 / FrameTimeArraySize;
+
 		return frameTime;
 	}
 
-	private void RunFrame(ref long prevCycles)
+	private void RunFrame()
 	{
 		long cyclesThisFrame = 0;
 		while (cyclesThisFrame < CpuCyclesPerFrame && !ppu.HitVBlank)
@@ -130,13 +125,24 @@ sealed class Gameboy
 		ppu.HitVBlank = false;
 	}
 
-	private void FrameDelay(in long frameStart)
+	private long FrameDelay()
 	{
-		int sleepTime = (int)((1000 * (FrameInterval - (Stopwatch.GetTimestamp() - frameStart)) / (double)Stopwatch.Frequency) - 0.5);
-		if (sleepTime > 2)
+		long elapsedTime = Stopwatch.GetTimestamp() - frameStart;
+
+		if (!fullspeed)
 		{
-			Thread.Sleep(sleepTime);
+			int sleepTime = (int)(((frameInterval - elapsedTime) * frequencyDivisor) - 0.5);
+			if (sleepTime > 2)
+			{
+				Thread.Sleep(sleepTime);
+			}
+
+			while (elapsedTime < frameInterval)
+			{
+				elapsedTime = Stopwatch.GetTimestamp() - frameStart;
+			}
 		}
-		while (Stopwatch.GetTimestamp() - frameStart < FrameInterval) { }
+
+		return elapsedTime;
 	}
 }
