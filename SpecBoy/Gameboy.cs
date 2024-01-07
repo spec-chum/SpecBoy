@@ -106,7 +106,7 @@ sealed class Gameboy
 		}
 	}
 
-	private static double CalculateFrameTimeAverage(Span<double> frameTimeArray)
+	private static double CalculateFrameTimeAverage(ReadOnlySpan<double> frameTimeArray)
 	{
 		double frameTime = 0.0;
 		for (int i = 0; i < FrameTimeArraySize; i++)
