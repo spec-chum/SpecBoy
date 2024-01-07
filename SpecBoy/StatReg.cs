@@ -1,4 +1,6 @@
-﻿namespace SpecBoy;
+﻿using static SpecBoy.Ppu;
+
+namespace SpecBoy;
 
 struct StatReg
 {
@@ -7,9 +9,9 @@ struct StatReg
 	public bool VBlankInt;
 	public bool HBlankInt;
 	public bool LyCompareFlag;
-	public Mode CurrentMode;
 
 	public bool LcdEnabled;
+	public Mode CurrentMode;
 	public Mode PendingMode;
 	public Mode PendingInterrupt;
 

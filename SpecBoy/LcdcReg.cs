@@ -11,7 +11,7 @@ struct LcdcReg
 	public bool SpritesEnabled;
 	public bool BgEnabled;
 
-	public byte GetByte()
+	public readonly byte GetByte()
 	{
 		return (byte)
 			( LcdEnabled.ToBytePower(7)

@@ -5,15 +5,6 @@ using static SDL2.SDL;
 
 namespace SpecBoy;
 
-enum Mode
-{
-	HBlank,
-	VBlank,
-	OAM,
-	LCDTransfer,
-	None = 256
-}
-
 sealed class Ppu
 {
 	private const int ScreenWidth = 160;
@@ -24,6 +15,10 @@ sealed class Ppu
 
 	private readonly uint[] colours = [0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff];
 
+	// SDL
+	private readonly nint renderer;
+	private readonly nint texture;
+
 	public byte Scy;
 	public byte Scx;
 	public byte Wy;
@@ -32,11 +27,7 @@ sealed class Ppu
 	public byte Obp0;
 	public byte Obp1;
 
-	public bool HitVSync;
-
-	// SDL
-	private readonly nint renderer;
-	private readonly nint texture;
+	public bool HitVBlank;
 
 	private readonly uint[] pixels;
 	private readonly byte[] vRam;
@@ -322,7 +313,7 @@ sealed class Ppu
 				break;
 
 			case Mode.VBlank:
-				HitVSync = true;
+				HitVBlank = true;
 				RenderFrame();
 				winY = 0;
 				stat.PendingInterrupt = Mode.VBlank;
@@ -551,5 +542,14 @@ sealed class Ppu
 	private uint GetColourFromPalette(int colour, int palette)
 	{
 		return colours.DangerousGetReferenceAt((palette >> (colour << 1)) & 3);
+	}
+
+	public enum Mode
+	{
+		HBlank,
+		VBlank,
+		OAM,
+		LCDTransfer,
+		None = 256
 	}
 }

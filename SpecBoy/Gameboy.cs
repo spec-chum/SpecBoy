@@ -6,9 +6,9 @@ namespace SpecBoy;
 
 sealed class Gameboy
 {
-    private const int ScreenWidth = 160;
-    private const int ScreenHeight = 144;
-    private const int Scale = 6;
+	private const int ScreenWidth = 160;
+	private const int ScreenHeight = 144;
+	private const int Scale = 6;
 	private const int FrameTimeArraySize = 4;
 	private const int CpuCyclesPerFrame = 70224;
 
@@ -120,14 +120,14 @@ sealed class Gameboy
 	private void RunFrame(ref long prevCycles)
 	{
 		long cyclesThisFrame = 0;
-		while (cyclesThisFrame < CpuCyclesPerFrame && !ppu.HitVSync)
+		while (cyclesThisFrame < CpuCyclesPerFrame && !ppu.HitVBlank)
 		{
 			long currentCycles = cpu.Execute();
 			cyclesThisFrame += currentCycles - prevCycles;
 			prevCycles = currentCycles;
 		}
 
-		ppu.HitVSync = false;
+		ppu.HitVBlank = false;
 	}
 
 	private void FrameDelay(in long frameStart)

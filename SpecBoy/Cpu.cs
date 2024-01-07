@@ -1241,13 +1241,13 @@ sealed class Cpu
 	private void Res(int r8, int bit)
 	{
 		ref byte value = ref GetR8Ref(r8);
-		value = (byte)(value & (~(1 << bit)));
+		value.SetBitToValue(bit, false);
 	}
 
 	private void Set(int r8, int bit)
 	{
 		ref byte value = ref GetR8Ref(r8);
-		value = (byte)(value | (1 << bit));
+		value.SetBitToValue(bit, true);
 	}
 
 	private void ProcessInterrupts()

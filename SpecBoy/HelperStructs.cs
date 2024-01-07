@@ -2,6 +2,7 @@
 
 namespace SpecBoy;
 
+#pragma warning disable CA1051 // Do not declare visible instance fields
 [StructLayout(LayoutKind.Explicit)]
 public struct Reg16
 {
@@ -42,3 +43,4 @@ public readonly struct Mem32
 		public readonly byte Forth;
 	}
 }
+#pragma warning restore CA1051 // Do not declare visible instance fields
