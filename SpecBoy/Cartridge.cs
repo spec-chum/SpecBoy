@@ -8,7 +8,6 @@ sealed class Cartridge
 	public Func<int, byte> ReadByte;
 	public Action<int, byte> WriteByte;
 
-	private readonly int[] ramSizes = [0, 2, 8, 32, 128, 64];
 	private readonly int bankLimitMask;
 	private readonly byte[] rom;
 
@@ -79,17 +78,12 @@ sealed class Cartridge
 		string typeString = cartType.ToString();
 		Console.WriteLine($"ROM type: {typeString.ToUpperInvariant()} ({(int)cartType})");
 
-		romSize = 0x20 << rom[0x0148];
+		romSize = 32 << rom[0x0148];
 		Console.WriteLine($"ROM size: {romSize}K ({romSize >> 4} banks)");
 
-		hasRam = typeString.Contains("Ram");
+		ReadOnlySpan<byte> ramSizes = [0, 0, 8, 32, 128, 64];
 		ramSize = ramSizes[rom[0x0149]];
-
-		if (ramSize == 0)
-		{
-			hasRam = false;
-		}
-
+		hasRam = ramSize != 0 && typeString.Contains("Ram");
 		Console.WriteLine($"Has RAM: {(hasRam ? $"Yes\nRAM size: {ramSize}K" : "No")}");
 
 		hasBattery = typeString.Contains("Battery");
@@ -113,7 +107,7 @@ sealed class Cartridge
 				break;
 
 			default:
-				break;
+				throw new BadImageFormatException("Cartridge type not yet implemented");
 		}
 	}
 

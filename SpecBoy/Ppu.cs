@@ -57,7 +57,7 @@ sealed class Ppu
 		pixels = new uint[ScreenWidth * ScreenHeight];
 
 		this.renderer = renderer;
-		texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, (int)SDL_TextureAccess.SDL_TEXTUREACCESS_STREAMING, 160, 144);
+		texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, (int)SDL_TextureAccess.SDL_TEXTUREACCESS_STREAMING, ScreenWidth, ScreenHeight);
 
 		stat.Init();
 	}

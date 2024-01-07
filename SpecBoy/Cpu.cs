@@ -249,7 +249,7 @@ sealed class Cpu
 
 			// STOP
 			case 0x10:
-				throw new Exception("STOP HIT!");
+				throw new InvalidOperationException("STOP HIT!");
 
 			// DAA
 			case 0x27:
