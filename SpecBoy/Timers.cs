@@ -95,7 +95,7 @@ sealed class Timers
 			reloadingTima = true;
 			tima = tma;
 
-			Interrupts.TimerIrqReq = true;
+			Interrupts.IF.SetBit(Interrupts.TimerBit);
 		}
 
 		divCounter += 4;

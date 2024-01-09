@@ -108,7 +108,7 @@ struct StatReg
 		// Only fire on rising edge (STAT IRQ blocking)
 		if (!oldIntRequest && intRequest)
 		{
-			Interrupts.StatIrqReq = true;
+			Interrupts.IF.SetBit(Interrupts.StatBit);
 		}
 	}
 }

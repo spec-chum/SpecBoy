@@ -1241,13 +1241,13 @@ sealed class Cpu
 	private void Res(int r8, int bit)
 	{
 		ref byte value = ref GetR8Ref(r8);
-		value.SetBitToValue(bit, false);
+		value.ResetBit(bit);
 	}
 
 	private void Set(int r8, int bit)
 	{
 		ref byte value = ref GetR8Ref(r8);
-		value.SetBitToValue(bit, true);
+		value.SetBit(bit);
 	}
 
 	private void ProcessInterrupts()
@@ -1278,30 +1278,32 @@ sealed class Cpu
 				WriteByte(SP, (byte)(PC >> 8));
 				CycleTick();
 
+				byte irqsPending = (byte)(Interrupts.IE & Interrupts.IF & 0x1f);
+
 				// Check which interrupt to service, in priority order
-				if (Interrupts.VBlankIrqReq && Interrupts.IE.IsBitSet(Interrupts.VBlankIeBit))
+				if (irqsPending.IsBitSet(Interrupts.VBlankBit))
 				{
-					Interrupts.VBlankIrqReq = false;
+					Interrupts.IF.ResetBit(Interrupts.VBlankBit);
 					IrqVector = Interrupts.VBlankIrqVector;
 				}
-				else if (Interrupts.StatIrqReq && Interrupts.IE.IsBitSet(Interrupts.StatIeBit))
+				else if (irqsPending.IsBitSet(Interrupts.StatBit))
 				{
-					Interrupts.StatIrqReq = false;
+					Interrupts.IF.ResetBit(Interrupts.StatBit);
 					IrqVector = Interrupts.StatIrqVector;
 				}
-				else if (Interrupts.TimerIrqReq && Interrupts.IE.IsBitSet(Interrupts.TimerIeBit))
+				else if (irqsPending.IsBitSet(Interrupts.TimerBit))
 				{
-					Interrupts.TimerIrqReq = false;
+					Interrupts.IF.ResetBit(Interrupts.TimerBit);
 					IrqVector = Interrupts.TimerIrqVector;
 				}
-				else if (Interrupts.SerialIrqReq && Interrupts.IE.IsBitSet(Interrupts.SerialIeBit))
+				else if (irqsPending.IsBitSet(Interrupts.SerialBit))
 				{
-					Interrupts.SerialIrqReq = false;
+					Interrupts.IF.ResetBit(Interrupts.SerialBit);
 					IrqVector = Interrupts.SerialIrqVector;
 				}
-				else if (Interrupts.JoypadIrqReq && Interrupts.IE.IsBitSet(Interrupts.JoypadIeBit))
+				else if (irqsPending.IsBitSet(Interrupts.JoypadBit))
 				{
-					Interrupts.JoypadIrqReq = false;
+					Interrupts.IF.ResetBit(Interrupts.JoypadBit);
 					IrqVector = Interrupts.JoypadIrqVector;
 				}
 

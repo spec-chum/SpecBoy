@@ -25,21 +25,15 @@ public static class ExtensionMethods
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static void SetBitToValue(ref this byte value, int bit, bool bitValue)
+	public static void SetBit(ref this byte value, int bit)
 	{
-		value = (byte)BitHelper.SetFlag(value, bit, bitValue);
+		value |= (byte)(1 << bit);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static void SetBitToValue(ref this ushort value, int bit, bool bitValue)
+	public static void ResetBit(ref this byte value, int bit)
 	{
-		value = (ushort)BitHelper.SetFlag(value, bit, bitValue);
-	}
-
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	public static void SetBitToValue(ref this uint value, int bit, bool bitValue)
-	{
-		BitHelper.SetFlag(ref value, bit, bitValue);
+		value &= (byte)~(1 << bit);
 	}
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]

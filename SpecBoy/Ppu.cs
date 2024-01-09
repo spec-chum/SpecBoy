@@ -13,12 +13,6 @@ sealed class Ppu
 	private const int LcdTransferCycles = 172;
 	private const int LineTotalCycles = 456;
 
-	private readonly uint[] colours = [0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff];
-
-	// SDL
-	private readonly nint renderer;
-	private readonly nint texture;
-
 	public byte Scy;
 	public byte Scx;
 	public byte Wy;
@@ -32,6 +26,11 @@ sealed class Ppu
 	private readonly uint[] pixels;
 	private readonly byte[] vRam;
 	private readonly byte[] oam;
+	private readonly uint[] colours = [0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff];
+
+	// SDL
+	private readonly nint renderer;
+	private readonly nint texture;
 
 	private LcdcReg lcdc;
 	private StatReg stat;
@@ -245,7 +244,7 @@ sealed class Ppu
 		{
 			if (Ly == 144)
 			{
-				Interrupts.VBlankIrqReq = true;
+				Interrupts.IF.SetBit(Interrupts.VBlankBit);
 				stat.RequestInterrupt(Mode.OAM);
 			}
 

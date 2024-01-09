@@ -53,7 +53,11 @@ sealed class Joypad
 			}
 		}
 		result ^= 0x0f;
-		Interrupts.JoypadIrqReq = result != 0x0f;
+
+		if (result != 0x0f)
+		{
+			Interrupts.IF.SetBit(Interrupts.JoypadBit);
+		}
 
 		return result;
 	}
