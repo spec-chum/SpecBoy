@@ -13,6 +13,8 @@ sealed class Ppu
 	private const int LcdTransferCycles = 172;
 	private const int LineTotalCycles = 456;
 
+	private static ReadOnlySpan<uint> Colours => new uint[] { 0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff };
+
 	public byte Scy;
 	public byte Scx;
 	public byte Wy;
@@ -26,7 +28,6 @@ sealed class Ppu
 	private readonly uint[] pixels;
 	private readonly byte[] vRam;
 	private readonly byte[] oam;
-	private readonly uint[] colours = [0xffd0f8e0, 0xff70c088, 0xff566834, 0xff201808, 0xff0000ff];
 
 	// SDL
 	private readonly nint renderer;
@@ -202,6 +203,11 @@ sealed class Ppu
 		{
 			VBlank();
 		}
+	}
+
+	public void DestroyPpuTexture()
+	{
+		SDL_DestroyTexture(texture);
 	}
 
 	private void Line0to143()
@@ -521,7 +527,7 @@ sealed class Ppu
 
 	private void RenderScanline()
 	{
-		var pixelSpan = new Span<uint>(pixels, Ly * ScreenWidth, ScreenWidth);
+		Span<uint> pixelSpan = new(pixels, Ly * ScreenWidth, ScreenWidth);
 		RenderBackground(pixelSpan);
 		RenderSprites(pixelSpan);
 	}
@@ -538,9 +544,9 @@ sealed class Ppu
 		SDL_RenderPresent(renderer);
 	}
 
-	private uint GetColourFromPalette(int colour, int palette)
+	private static uint GetColourFromPalette(int colour, int palette)
 	{
-		return colours.DangerousGetReferenceAt((palette >> (colour << 1)) & 3);
+		return Colours.DangerousGetReferenceAt((palette >> (colour << 1)) & 3);
 	}
 
 	public enum Mode

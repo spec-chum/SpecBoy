@@ -2,7 +2,7 @@
 
 sealed class Timers
 {
-	private readonly int[] triggerBits = [9, 3, 5, 7];
+	private static readonly int[] triggerBits = [9, 3, 5, 7];
 
 	private int divBit;
 	private ushort divCounter;

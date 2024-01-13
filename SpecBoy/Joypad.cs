@@ -7,12 +7,14 @@ namespace SpecBoy;
 
 sealed class Joypad
 {
+	private static ReadOnlySpan<SDL_Scancode> Keymap => new SDL_Scancode[]
+	{
+		SDL_SCANCODE_RIGHT, SDL_SCANCODE_LEFT, SDL_SCANCODE_UP, SDL_SCANCODE_DOWN,
+		SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D, SDL_SCANCODE_F
+	};
+
 	private bool buttonsEnabled;
 	private bool dpadEnabled;
-
-	private readonly SDL_Scancode[] keymap = [
-		SDL_SCANCODE_RIGHT, SDL_SCANCODE_LEFT, SDL_SCANCODE_UP, SDL_SCANCODE_DOWN,
-		SDL_SCANCODE_S, SDL_SCANCODE_A, SDL_SCANCODE_D, SDL_SCANCODE_F];
 
 	public byte JoyP
 	{
@@ -49,7 +51,7 @@ sealed class Joypad
 
 			for (int i = 0; i < 4; i++)
 			{
-				result |= (byte)(keyState[(int)keymap.DangerousGetReferenceAt(i + offset)] << i);
+				result |= (byte)(keyState[(int)Keymap.DangerousGetReferenceAt(i + offset)] << i);
 			}
 		}
 		result ^= 0x0f;

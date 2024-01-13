@@ -71,6 +71,7 @@ sealed class Gameboy
 			SDL_SetWindowTitle(window, $"SpecBoy - FPS: {1.0 / frameTimeAverage:F2}");
 		}
 
+		ppu.DestroyPpuTexture();
 		SDL_DestroyRenderer(renderer);
 		SDL_DestroyWindow(window);
 		SDL_Quit();
