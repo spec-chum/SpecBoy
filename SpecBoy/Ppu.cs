@@ -366,46 +366,36 @@ sealed class Ppu
 		bool windowDrawn = false;
 		bool canRenderWindow = Wy <= Ly && lcdc.WindowEnabled;
 
+		// Assume we're drawing background tiles, will be overridden below if we're drawing window
+		byte tileX = Scx;
+		byte tileY = (byte)(Ly + Scy);
+		byte offsetY = (byte)(tileY & 7);
+		ushort tilemap = bgTilemap;
+
 		for (int x = 0; x < pixelSpan.Length; x++)
 		{
-			ushort tilemap;
-			byte tx;
-			byte ty;
-
 			// Render window if enabled and visible
-			if (canRenderWindow && winX <= x)
+			if (!windowDrawn && (canRenderWindow && winX <= x))
 			{
 				windowDrawn = true;
-
-				tx = (byte)(x - winX);
-				ty = winY;
-
+				tileX = (byte)(x - winX);
+				tileY = winY;
+				offsetY = (byte)(tileY & 7);
 				tilemap = windowTilemap;
 			}
-			// Or render background
-			else
-			{
-				windowDrawn = false;
 
-				tx = (byte)(x + Scx);
-				ty = (byte)(Ly + Scy);
+			ref byte tileIndex = ref ReadVRamByteInternal(tilemap + (tileY / 8 * 32) + (tileX / 8));
+			ushort offset = (ushort)((offsetY * 2) + (ushort)(lcdc.TileDataSelect ? tileIndex * 16 : (sbyte)tileIndex * 16));
+			ref Mem16 tileData = ref ReadVRamWordInternal(tileDataLocation + offset);
 
-				tilemap = bgTilemap;
-			}
+			// Get pixel offset within tile (reversed)
+			byte offsetX = (byte)((tileX & 7) ^ 7);
 
-			ref byte tileIndex = ref ReadVRamByteInternal(tilemap + (ty / 8 * 32) + (tx / 8));
-
-			// tileX is reversed as we draw it backwards below
-			byte tileX = (byte)((tx & 7) ^ 7);
-			byte tileY = (byte)(ty & 7);
-
-			ref Mem16 tileData = ref tileDataLocation == 0x8000 ? ref ReadVRamWordInternal((ushort)(tileDataLocation + (tileIndex * 16) + (tileY * 2))) :
-				ref ReadVRamWordInternal((ushort)(tileDataLocation + ((sbyte)tileIndex * 16) + (tileY * 2)));
-
-			// Get colour (back to front)
-			int colour = tileData.Bytes.High.IsBitSet(tileX).ToBytePower(1) |
-				(tileData.Bytes.Low.IsBitSet(tileX).ToByte());
+			// Get and display pixel (reversed)
+			int colour = tileData.Bytes.High.IsBitSet(offsetX).ToBytePower(1) | (tileData.Bytes.Low.IsBitSet(offsetX).ToByte());
 			pixelSpan[x] = GetColourFromPalette(colour, Bgp);
+
+			tileX++;
 		}
 
 		// Only update window Y pos if window was drawn
