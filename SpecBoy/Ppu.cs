@@ -384,6 +384,7 @@ sealed class Ppu
 				tilemap = windowTilemap;
 			}
 
+			// Get tile and it's pixels
 			ref byte tileIndex = ref ReadVRamByteInternal(tilemap + (tileY / 8 * 32) + (tileX / 8));
 			ushort offset = (ushort)((offsetY * 2) + (ushort)(lcdc.TileDataSelect ? tileIndex * 16 : (sbyte)tileIndex * 16));
 			ref Mem16 tileData = ref ReadVRamWordInternal(tileDataLocation + offset);
@@ -491,11 +492,11 @@ sealed class Ppu
 					continue;
 				}
 
-				// Ternary is reversed as we draw it backwards below
-				byte tileX = (byte)(sprite.XFlip ? tilePixel : 7 - tilePixel);
+				// Get pixel offset within tile
+				byte offsetX = (byte)(sprite.XFlip ? tilePixel : tilePixel ^ 7);
 
-				// Get colour (back to front)
-				int colour = tileData.Bytes.High.IsBitSet(tileX).ToBytePower(1) | (tileData.Bytes.Low.IsBitSet(tileX).ToByte());
+				// Get colour
+				int colour = tileData.Bytes.High.IsBitSet(offsetX).ToBytePower(1) | (tileData.Bytes.Low.IsBitSet(offsetX).ToByte());
 
 				// Move on if pixel is transparent anyway
 				if (colour == 0)
@@ -503,12 +504,12 @@ sealed class Ppu
 					continue;
 				}
 
-				ref uint currentPixelRef = ref pixelSpan.DangerousGetReferenceAt(currentPixel);
+				ref uint pixelInSpanRef = ref pixelSpan.DangerousGetReferenceAt(currentPixel);
 
 				// Check priority or draw over transparent pixel
-				if (!sprite.Priority || currentPixelRef == GetColourFromPalette(0, Bgp))
+				if (!sprite.Priority || pixelInSpanRef == GetColourFromPalette(0, Bgp))
 				{
-					currentPixelRef = GetColourFromPalette(colour, pal);
+					pixelInSpanRef = GetColourFromPalette(colour, pal);
 					pixelDrawnRef = true;
 				}
 			}
