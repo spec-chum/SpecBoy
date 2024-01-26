@@ -22,12 +22,12 @@ sealed class Memory
 
 		Mem = new byte[0x10000];
 
-		try
+		if (File.Exists("DMG_ROM.bin"))
 		{
-			BootRomEnabled = true;
 			bootRom = File.ReadAllBytes("DMG_ROM.bin");
+			BootRomEnabled = true;
 		}
-		catch (FileNotFoundException)
+		else
 		{
 			BootRomEnabled = false;
 		}

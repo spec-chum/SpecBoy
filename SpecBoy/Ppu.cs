@@ -10,7 +10,6 @@ namespace SpecBoy;
 
 sealed class Ppu
 {
-
 	private const int ScreenWidth = 160;
 	private const int ScreenHeight = 144;
 	private const int OamCycles = 80;

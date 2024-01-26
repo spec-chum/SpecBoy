@@ -71,8 +71,7 @@ sealed class Cartridge
 	{
 		Console.Write("ROM name: ");
 		ReadOnlySpan<byte> romName = rom.AsSpan().Slice(0x0134, 16);
-		Console.Write(Encoding.ASCII.GetString(romName[..romName.IndexOf((byte)0)]));
-		Console.WriteLine();
+		Console.WriteLine(Encoding.ASCII.GetString(romName[..romName.IndexOf((byte)0)]));
 
 		var cartType = (CartType)rom[0x0147];
 		string typeString = cartType.ToString();
