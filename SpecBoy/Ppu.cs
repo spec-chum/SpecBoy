@@ -3,10 +3,14 @@ using System.Runtime.CompilerServices;
 
 using static SDL2.SDL;
 
+using Mem16 = (byte low, byte high);
+using Mem32 = (byte, byte, byte, byte);
+
 namespace SpecBoy;
 
 sealed class Ppu
 {
+
 	private const int ScreenWidth = 160;
 	private const int ScreenHeight = 144;
 	private const int OamCycles = 80;
@@ -339,14 +343,14 @@ sealed class Ppu
 		return (value + 3) & -4;
 	}
 
-	private ref byte ReadVRamByteInternal(int address)
+	private byte ReadVRamByteInternal(int address)
 	{
-		return ref vRam.DangerousGetReferenceAt(address & 0x1fff);
+		return vRam.DangerousGetReferenceAt(address & 0x1fff);
 	}
 
-	private ref Mem16 ReadVRamWordInternal(int address)
+	private Mem16 ReadVRamWordInternal(int address)
 	{
-		return ref Unsafe.As<byte, Mem16>(ref vRam.DangerousGetReferenceAt(address & 0x1fff));
+		return Unsafe.ReadUnaligned<Mem16>(ref vRam.DangerousGetReferenceAt(address & 0x1fff));
 	}
 
 	private void RenderBackground(Span<uint> pixelSpan)
@@ -385,15 +389,15 @@ sealed class Ppu
 			}
 
 			// Get tile and it's pixels
-			ref byte tileIndex = ref ReadVRamByteInternal(tilemap + (tileY / 8 * 32) + (tileX / 8));
+			byte tileIndex = ReadVRamByteInternal(tilemap + (tileY / 8 * 32) + (tileX / 8));
 			ushort offset = (ushort)((offsetY * 2) + (ushort)(lcdc.TileDataSelect ? tileIndex * 16 : (sbyte)tileIndex * 16));
-			ref Mem16 tileData = ref ReadVRamWordInternal(tileDataLocation + offset);
+			Mem16 tileData = ReadVRamWordInternal(tileDataLocation + offset);
 
 			// Get pixel offset within tile (reversed)
 			byte offsetX = (byte)((tileX & 7) ^ 7);
 
 			// Get and display pixel (reversed)
-			int colour = tileData.Bytes.High.IsBitSet(offsetX).ToBytePower(1) | (tileData.Bytes.Low.IsBitSet(offsetX).ToByte());
+			int colour = tileData.high.IsBitSet(offsetX).ToBytePower(1) | tileData.low.IsBitSet(offsetX).ToByte();
 			pixelSpan[x] = GetColourFromPalette(colour, Bgp);
 
 			tileX++;
@@ -423,7 +427,7 @@ sealed class Ppu
 
 			if (spriteStartY <= Ly && Ly < spriteEndY)
 			{
-				spriteSpan[numSprites] = new Sprite(Unsafe.As<byte, Mem32>(ref oam[i]));
+				spriteSpan[numSprites] = new Sprite(Unsafe.ReadUnaligned<Mem32>(ref oam[i]));
 				numSprites++;
 			}
 		}
@@ -463,7 +467,7 @@ sealed class Ppu
 				tileIndex += (ushort)(((sprite.TileNum & 0xfe) * 16) + (tileY * 2));
 			}
 
-			ref Mem16 tileData = ref ReadVRamWordInternal(tileIndex);
+			Mem16 tileData = ReadVRamWordInternal(tileIndex);
 
 			// Set sprite palette
 			int pal = sprite.PalNum ? Obp1 : Obp0;
@@ -496,7 +500,7 @@ sealed class Ppu
 				byte offsetX = (byte)(sprite.XFlip ? tilePixel : tilePixel ^ 7);
 
 				// Get colour
-				int colour = tileData.Bytes.High.IsBitSet(offsetX).ToBytePower(1) | (tileData.Bytes.Low.IsBitSet(offsetX).ToByte());
+				int colour = tileData.high.IsBitSet(offsetX).ToBytePower(1) | tileData.low.IsBitSet(offsetX).ToByte();
 
 				// Move on if pixel is transparent anyway
 				if (colour == 0)
