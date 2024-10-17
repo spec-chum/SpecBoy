@@ -45,15 +45,17 @@ sealed class Joypad
 	{
 		byte result = 0;
 
+		ReadOnlySpan<byte> keyState;
 		unsafe
 		{
-			byte* keyState = (byte*)SDL_GetKeyboardState(out _).ToPointer();
-
-			for (int i = 0; i < 4; i++)
-			{
-				result |= (byte)(keyState[(int)Keymap.DangerousGetReferenceAt(i + offset)] << i);
-			}
+			keyState = new ReadOnlySpan<byte>((byte*)SDL_GetKeyboardState(out int n), n);
 		}
+
+		for (int i = 0; i < 4; i++)
+		{
+			result |= (byte)(keyState[(int)Keymap.DangerousGetReferenceAt(i + offset)] << i);
+		}
+
 		result ^= 0x0f;
 
 		if (result != 0x0f)
