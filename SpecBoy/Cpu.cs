@@ -75,7 +75,7 @@ sealed class Cpu
 		}
 	}
 
-	public ref byte A { get => ref af.R8.High; }
+	public ref byte A => ref af.R8.High;
 	public ref byte F
 	{
 		// Don't want F being altered directly, so only use getter
@@ -86,22 +86,24 @@ sealed class Cpu
 		}
 	}
 
-	public ref ushort BC { get => ref bc.R16; }
-	public ref byte B { get => ref bc.R8.High; }
-	public ref byte C { get => ref bc.R8.Low; }
+    public ref ushort BC => ref bc.R16;
+    public ref byte B => ref bc.R8.High;
+    public ref byte C => ref bc.R8.Low;
+ 
+    public ref ushort DE => ref de.R16;
+    public ref byte D => ref de.R8.High;
+    public ref byte E => ref de.R8.Low;
+ 
+    public ref ushort HL => ref hl.R16;
+    public ref byte H => ref hl.R8.High;
+    public ref byte L => ref hl.R8.Low;
+ 
+    public ref ushort SP => ref sp;
 
-	public ref ushort DE { get => ref de.R16; }
-	public ref byte D { get => ref de.R8.High; }
-	public ref byte E { get => ref de.R8.Low; }
+ 
+    public ref ushort PC => ref pc;
 
-	public ref ushort HL { get => ref hl.R16; }
-	public ref byte H { get => ref hl.R8.High; }
-	public ref byte L { get => ref hl.R8.Low; }
-
-	public ref ushort SP { get => ref sp; }
-
-	public ref ushort PC { get => ref pc; }
-
+ 
 	public long Cycles { get; private set; }
 
 	public long Execute()
