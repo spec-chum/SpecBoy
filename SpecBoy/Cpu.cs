@@ -98,11 +98,8 @@ sealed class Cpu
     public ref byte H => ref hl.R8.High;
     public ref byte L => ref hl.R8.Low;
  
-    public ref ushort SP => ref sp;
-
- 
+    public ref ushort SP => ref sp; 
     public ref ushort PC => ref pc;
-
  
 	public long Cycles { get; private set; }
 
