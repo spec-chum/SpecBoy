@@ -7,6 +7,7 @@ sealed class Cpu
 	private readonly Memory mem;
 	private readonly Timers timers;
 	private readonly Ppu ppu;
+	private readonly Apu apu;
 
 	// Flags - discrete, so we're not wasting cycles on bitwise ops
 	private bool zero;
@@ -33,11 +34,12 @@ sealed class Cpu
 	private bool usedPeekHl;
 	private byte peekHl;
 
-	public Cpu(Memory mem, Ppu ppu, Timers timers)
+	public Cpu(Memory mem, Ppu ppu, Timers timers, Apu apu)
 	{
 		this.mem = mem;
 		this.timers = timers;
 		this.ppu = ppu;
+		this.apu = apu;
 
 		if (!mem.BootRomEnabled)
 		{
@@ -638,6 +640,7 @@ sealed class Cpu
 		// tick components
 		timers.Tick();
 		ppu.Tick();
+		apu.Tick();
 	}
 
 	private void UpdateFlags()

@@ -6,6 +6,7 @@ sealed class Memory
 	private readonly Ppu ppu;
 	private readonly Joypad joypad;
 	private readonly Cartridge cartridge;
+	private readonly Apu apu;
 
 	private readonly byte[] bootRom;
 
@@ -13,12 +14,13 @@ sealed class Memory
 	private ushort dmaSrcAddr;
 	private byte dmaLastByteWritten;
 
-	public Memory(Timers timers, Ppu ppu, Joypad joypad, Cartridge cartridge)
+	public Memory(Timers timers, Ppu ppu, Joypad joypad, Cartridge cartridge, Apu apu)
 	{
 		this.timers = timers;
 		this.ppu = ppu;
 		this.joypad = joypad;
 		this.cartridge = cartridge;
+		this.apu = apu;
 
 		Mem = new byte[0x10000];
 
@@ -131,28 +133,8 @@ sealed class Memory
 
 			0xff0f => (byte)(Interrupts.IF | 0xe0),
 
-			// NR10
-			0xff10 => (byte)(Mem[address] | 0x80),
-			0xff11 => 0xff,
-			// Unused
-			0xff15 => 0xff,
-			// NR30
-			0xff1a => (byte)(Mem[address] | 0x7f),
-			// NR32
-			0xff1c => (byte)(Mem[address] | 0x9f),
-			// Unused
-			0xff1f => 0xff,
-			// NR41
-			0xff20 => (byte)(Mem[address] | 0xc0),
-			// NR44
-			0xff23 => (byte)(Mem[address] | 0x3f),
-			// NR52
-			0xff26 => (byte)(Mem[address] | 0x70),
-
-			// Unused
-			0xff27 => 0xff,
-			0xff28 => 0xff,
-			0xff29 => 0xff,
+			// NR10-NR52 and wave pattern (sound registers)
+			>= 0xff10 and <= 0xff3f => apu.ReadRegister(address),
 
 			// PPU
 			0xff40 => ppu.Lcdc,
@@ -250,6 +232,11 @@ sealed class Memory
 
 			case 0xff0f:
 				Interrupts.IF = value;
+				break;
+
+			// Sound registers (NR10-NR52 and wave pattern)
+			case >= 0xff10 and <= 0xff3f:
+				apu.WriteRegister(address, value);
 				break;
 
 			// PPU

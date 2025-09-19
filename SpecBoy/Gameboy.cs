@@ -27,6 +27,7 @@ sealed class Gameboy
 	private readonly Ppu ppu;
 	private readonly Joypad joypad;
 	private readonly Cartridge cartridge;
+	private readonly Apu apu;
 
 	// SDL
 	private readonly nint window;
@@ -34,7 +35,7 @@ sealed class Gameboy
 
 	public Gameboy(string romName)
 	{
-		_ = SDL_Init(SDL_INIT_VIDEO);
+		_ = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 
 		window = SDL_CreateWindow("SpecBoy", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, ScreenWidth * Scale, ScreenHeight * Scale, SDL_WindowFlags.SDL_WINDOW_SHOWN);
 		renderer = SDL_CreateRenderer(window, -1, SDL_RendererFlags.SDL_RENDERER_ACCELERATED);
@@ -42,9 +43,10 @@ sealed class Gameboy
 		timers = new Timers();
 		joypad = new Joypad();
 		ppu = new Ppu(renderer);
+		apu = new Apu();
 		cartridge = new Cartridge(romName);
-		mem = new Memory(timers, ppu, joypad, cartridge);
-		cpu = new Cpu(mem, ppu, timers);
+		mem = new Memory(timers, ppu, joypad, cartridge, apu);
+		cpu = new Cpu(mem, ppu, timers, apu);
 	}
 
 	public void Run()
@@ -72,6 +74,7 @@ sealed class Gameboy
 		}
 
 		ppu.DestroyPpuTexture();
+		apu.Dispose();
 		SDL_DestroyRenderer(renderer);
 		SDL_DestroyWindow(window);
 		SDL_Quit();
